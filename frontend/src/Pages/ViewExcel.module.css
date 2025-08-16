@@ -1,0 +1,23 @@
+.main{
+    /* background-color: red; */
+    padding:20px;
+    margin:0 40px;
+    display: flex;
+    flex-direction: column;
+    gap:20px;
+}
+.header{
+    display: flex;
+    background-color: rgba(128, 128, 128, 0.397);
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+}
+.header span{
+    padding: 10px;
+     display: flex;
+    background-color: rgb(253, 253, 253);
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}

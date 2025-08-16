@@ -1,0 +1,4 @@
+.tablecontent{
+    overflow: auto;
+    scrollbar-width: thin;
+}
