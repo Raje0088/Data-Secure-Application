@@ -11,17 +11,17 @@ import { AuthContext } from "../../../context-api/AuthContext";
 import { useContext } from "react";
 import { MdOutlineFileDownload } from "react-icons/md";
 import { base_url } from "../../../config/config";
-// IPv4 Address. . . . . . . . . . . : 192.168.0.104
+import Remainder from "../../../Pages/Remainder";
 
 const SuperAdminDashboard = () => {
-  const {userLoginId} =useContext(AuthContext)
- const navigate = useNavigate()
+  const { userLoginId } = useContext(AuthContext);
+  // const [userLoginId,setUserLoginId] = useState("SA")
+  const navigate = useNavigate();
 
   const fileRef = useRef(null);
   const [membersList, setMembersList] = useState([]);
   const [stateList, setStateList] = useState([]);
   const [districtList, setDistrictList] = useState([]);
-  const [checkDumpData, setCheckDumpData] = useState(true);
   const [selectRawFile, setSelectRawFile] = useState(null);
   const [importButtonRawDB, setImportButtonRawDB] = useState(false);
   const [portalMsg, setPortalMsg] = useState("");
@@ -37,13 +37,32 @@ const SuperAdminDashboard = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgess] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
+  const [isImport, setIsImport] = useState(false);
   const [isAssignTask, setIsAssignTask] = useState(false);
+  const [isRemainder, setIsRemainder] = useState(false);
+  const [remainder, setRemainder] = useState([]);
+  const [remainderTotalCount, setRemainderTotalCount] = useState(0);
+  const [buttonTranverseId, setButtonTranverseId] = useState(null);
+
+  const fetchRemainder = async () => {
+    try {
+      const result = await axios.get(`${base_url}/remainders/remainder`);
+      console.log("result", result.data.result);
+      setRemainder(result.data.result);
+      setRemainderTotalCount(result.data.result.length);
+    } catch (err) {
+      console.log("internal error", err);
+    }
+  };
+  useEffect(() => {
+    fetchRemainder();
+  }, []);
 
   useEffect(() => {
     const fetch = async () => {
       try {
         const getPincode = await axios.get(
-          "http://localhost:3000/pincode/search-getplaces",
+          `${base_url}/pincode/search-getplaces`,
           {
             params: {
               state: filteredBy.state,
@@ -75,6 +94,12 @@ const SuperAdminDashboard = () => {
       console.log("🔥 Received taskAssigned:", data);
       setTaskList((prev) => ({ ...prev, ...data }));
       alert(data.message);
+    });
+
+    socket.on("remainder", (data) => {
+      console.log("data", data.length);
+      setRemainderTotalCount(data.length);
+      setRemainder(data);
     });
 
     return () => {
@@ -235,41 +260,79 @@ const SuperAdminDashboard = () => {
   const goToExcelView = () => {
     navigate("/view-excel");
   };
-  const handleSampleFile = ()=>{
-    try{
+  const handleSampleFile = () => {
+    try {
       const link = document.createElement("a");
-      link.href= `${base_url}/raw-data/samplefile`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      console.log("file downloaded Successfully")
-    }catch(err){
-      console.log("internal error",err)
+      link.href = `${base_url}/raw-data/samplefile`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      console.log("file downloaded Successfully");
+    } catch (err) {
+      console.log("internal error", err);
     }
-  }
+  };
   return (
     <div className={styles.main}>
-      <HomeNavigator />
       <div className={styles["main-content"]}>
         <header className={styles.header}>
           <h3>{userLoginId} Dashboard</h3>
         </header>
         <div className={styles["box-div"]}>
           <div className={styles.box}>
+            <button
+              style={{
+                backgroundColor:
+                  buttonTranverseId === "Import" ? "hsl(241, 100%, 81%)" : "",
+              }}
+              onClick={() => {
+                setIsImport((prev) => !prev);
+                setButtonTranverseId("Import");
+              }}
+            >
+              Import
+            </button>
             <button>Schedule Optima</button>
             <button
+              style={{
+                position: "relative",
+                backgroundColor:
+                  buttonTranverseId === "Assign Task"
+                    ? "hsl(241, 100%, 81%)"
+                    : "",
+              }}
               onClick={() => {
                 setIsAssignTask((prev) => !prev);
+                setButtonTranverseId("Assign Task");
               }}
-              style={{ position: "relative" }}
             >
               Assign Task
             </button>
             <button>Master Data</button>
             <button>Report</button>
-            <button>Reminder</button>
+            <div className={styles.notification}>
+              <button
+                style={{
+                  backgroundColor:
+                    buttonTranverseId === "Remainder"
+                      ? "hsl(241, 100%, 81%)"
+                      : "",
+                }}
+                onClick={() => {
+                  setIsRemainder((prev) => !prev);
+                  setButtonTranverseId("Remainder");
+                }}
+              >
+                Remainder
+                <span className={styles["notification-icon"]}>
+                  {remainderTotalCount}
+                </span>
+              </button>
+            </div>
           </div>
           <div className={styles["show-content"]}>
+            {/* ===========================ADD BUTTON=============================== */}
+
             {isAssignTask && (
               <div className={styles["show-content-div"]}>
                 {" "}
@@ -333,13 +396,16 @@ const SuperAdminDashboard = () => {
               </div>
             )}
             {/* ===========================ADD BUTTON=============================== */}
-            {checkDumpData && (
+            {isImport && (
               <>
                 <div>
                   <span className={styles.sample}>
                     <h2>Import Excel Sheet (.csv / .xlsx format only) </h2>
                     <p>Sample file for upload </p>
-                    <MdOutlineFileDownload onClick={handleSampleFile} className={styles["download-icon"]} />
+                    <MdOutlineFileDownload
+                      onClick={handleSampleFile}
+                      className={styles["download-icon"]}
+                    />
                   </span>
                   <div className={styles.dumpdata}>
                     <input
@@ -394,16 +460,31 @@ const SuperAdminDashboard = () => {
                 </div>
               </>
             )}
+            {/* ===========================REMAINDER=============================== */}
+            {isRemainder && (
+              <div>
+                <Remainder
+                  remainder={remainder}
+                  setRemainder={setRemainder}
+                  refreshRemainder={fetchRemainder}
+                />
+              </div>
+            )}
           </div>
           <div className={styles.box}>
-            <button onClick={goToSearchPage}>Search</button>
             <button
+              style={{
+                backgroundColor:
+                  buttonTranverseId === "Search" ? "hsl(241, 100%, 81%)" : "",
+              }}
               onClick={() => {
-                setCheckDumpData((prev) => !prev);
+                goToSearchPage();
+                setButtonTranverseId("Search");
               }}
             >
-              Add
+              Search
             </button>
+            <button>Add</button>
             <button>Delete</button>
             <div className={styles.selects}>
               <select name="" id="">
@@ -427,10 +508,17 @@ const SuperAdminDashboard = () => {
             <button>print</button>
             <button>Save</button>
             <button>Update</button>
-            <button onClick={goToExcelView}>View Excel</button>
+            <button
+              style={{
+                backgroundColor:
+                  buttonTranverseId === "View Excel" ? "hsl(241, 100%, 81%)" : "",
+              }}
+              onClick={()=>{goToExcelView();setButtonTranverseId("View Excel")}}
+            >
+              View Excel
+            </button>
           </div>
         </div>
-        <div>Report</div>
       </div>
     </div>
   );

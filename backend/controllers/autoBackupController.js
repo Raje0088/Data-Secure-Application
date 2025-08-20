@@ -67,7 +67,7 @@ const getAutoBackupEmails = async (req, res) => {
         res.status(500).json({ message: "internal error", err: err.message })
     }
 }
-cron.schedule('32 17 * * *', async () => {
+cron.schedule('03 18 * * *', async () => {
     try {
         const date = new Date()
         const backupDir = `D:/project/MongoBackUp/mongoDump-${date.toISOString().split("T")[0]}`;

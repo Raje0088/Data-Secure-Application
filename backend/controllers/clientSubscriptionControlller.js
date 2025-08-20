@@ -8,7 +8,7 @@ const createSubscripbeUser = async (req, res) => {
             addresses, pincode, district,
             state, assignBy, assignTo,
             product, stage, quotationShare,
-            expectedDate, remarks,
+            expectedDate, remarks,label,
             followUpDate, verifiedBy, tracker, amountDetails, amountHistory, action, followUpTime } = req.body;
 
         const clientSubscriptionId = clientId.replace("C", "U")
@@ -85,6 +85,7 @@ const createSubscripbeUser = async (req, res) => {
             action_db: action,
             database_status_db: "client_db",
             tracking_db: tracker,
+            label_db:label,
             amountDetails_db: amountDetails,
             amountHistory_db: amountHistory,
         })
@@ -104,7 +105,7 @@ const updateUserScription = async (req, res) => {
             addresses, pincode, district,
             state, assignBy, assignTo,
             product, stage, quotationShare,
-            expectedDate, remarks,
+            expectedDate, remarks,label,
             followUpDate, verifiedBy, tracker, amountDetails, amountHistory, action, followUpTime } = req.body;
         let { callType, country } = req.body;
 
@@ -195,6 +196,7 @@ const updateUserScription = async (req, res) => {
                     date_db: new Date().toLocaleDateString('en-GB'),
                     action_db: action,
                     database_status_db: "client_subscription_db",
+                    label_db:label,
                     tracking_db: updatedTracker,
                     amountDetails_db: amountDetails,
                     amountHistory_db: amountHistory,

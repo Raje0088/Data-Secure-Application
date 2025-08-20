@@ -273,16 +273,17 @@ const activateRawData = async (req, res) => {
     }
 }
 
-//GET RAW DATA FILTERS
+//GET RAW DATA FILTERS BY SEARCH
 const filterRawData = async (req, res) => {
     try {
-        const { clientName, opticalName, address, mobile, email, district, state, country, hot,
+        const { clientId,clientName, opticalName, address, mobile, email, district, state, country, hot,
             followUp, demo, installation, product, defaulter, recovery, lost, dateFrom, dateTo, clientType, } = req.query;
         const { page = 1 } = req.query;
         const limit = 500;
         const skip = (page - 1) * limit;
         console.log("query", req.query)
         const filters = {}
+        if(clientId) filters.client_id = clientId
         if (clientName) filters.client_name_db = { $regex: clientName, $options: "i" }
         if (opticalName) filters.optical_name1_db = { $regex: opticalName, $options: "i" }
         if (address) filters.address_1_db = { $regex: address, $options: "i" }

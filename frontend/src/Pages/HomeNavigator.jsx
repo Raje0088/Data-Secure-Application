@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Register from "../components/Register.jsx";
 import Setting from "../components/Setting.jsx";
@@ -18,61 +18,150 @@ import { GrUserAdmin } from "react-icons/gr";
 import { FaUsers } from "react-icons/fa";
 import { TbReport } from "react-icons/tb";
 import { RiLogoutCircleRLine } from "react-icons/ri";
+import { FaEye } from "react-icons/fa";
+import { FaEyeSlash } from "react-icons/fa";
+
 const HomeNavigator = () => {
-  const navigate = useNavigate()
-  const handleLogout = ()=>{
-    localStorage.removeItem("userLoginId")
-    navigate("/login")
-  }
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [rel, setRel] = useState({ x: 0, y: 0 }); // <-- initialize with defaults
+  const nodeRef = useRef(null);
+
+  const [isDrag, setIsDrag] = useState(false);
+  const [toggleOpen, setToggleOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("userLoginId");
+    navigate("/login");
+  };
+  const handleToggle = () => {
+    setToggleOpen((prev) => !prev);
+  };
+
+  const startDrag = (e) => {
+    if (e.button !== 0) return;
+    setIsDrag(true);
+
+    const rect = nodeRef.current.getBoundingClientRect();
+    setRel({
+      x: e.pageX - rect.left,
+      y: e.pageY - rect.top,
+    });
+
+  };
+  const doDrag = (e) => {
+    if (!isDrag || !nodeRef.current) return;
+
+    const element = nodeRef.current;
+    const rect = element.getBoundingClientRect();
+
+    const maxX = window.innerWidth - rect.width;
+    const maxY = window.innerHeight - rect.height;
+
+    // Clamp X and Y
+    const newX = Math.max(0, Math.min(e.pageX - rel.x, maxX));
+    const newY = Math.max(0, Math.min(e.pageY - rel.y, maxY));
+
+    setPos({ x: newX, y: newY });
+
+  };
+
+  const stopDrag = (e) => {
+    setIsDrag(false);
+  };
+
+  useEffect(() => {
+    if (isDrag) {
+      document.addEventListener("mousemove", doDrag);
+      document.addEventListener("mouseup", stopDrag);
+    } else {
+      document.removeEventListener("mousemove", doDrag);
+      document.removeEventListener("mouseup", stopDrag);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", doDrag);
+      document.removeEventListener("mouseup", stopDrag);
+    };
+  }, [isDrag]);
   return (
-    <div className={styles.main}>
-      <div className={styles.home}>
-        <Link to="/" element={<SuperAdminDashboard />}>
+      <div
+        className={`${styles.home} ${styles.nodrag}`}
+        style={{
+          left: `${pos.x}px`,
+          top: `${pos.y}px`,
+          cursor: "move",
+          position: "absolute",
+        }}
+        ref={nodeRef}
+        onMouseDown={startDrag}
+      >
+        {toggleOpen ? (
           <h2>
-            <FaHome className={styles.icon} />
+            <FaEye className={styles.icon} onClick={handleToggle} style={{color:"red"}} />
           </h2>
-        </Link>
-        <Link to="/user-dashboard" element={<ExecutiveDashboard />}>
+        ) : (
           <h2>
-            <FaUsers className={styles.icon} />
+            <FaEyeSlash className={styles.icon} onClick={handleToggle} style={{color:"red"}} />
           </h2>
-        </Link>
-        <Link to="/register" element={<Register />}>
-          <h2>
-            <FaRegistered className={styles.icon} />
-          </h2>
-        </Link>
-        <Link to="/setting" element={<Setting />}>
-          <h2>
-            <IoSettings className={styles.icon} />
-          </h2>
-        </Link>
-        <Link to="/client-page" element={<ClientPage />}>
-          <h2>
-            <GrUserAdmin className={styles.icon} />
-          </h2>
-        </Link>
-        <Link to="/userpage" element={<UserPage />}>
-          <h2>
-            <FaUserCircle className={styles.icon} />
-          </h2>
-        </Link>
-        <Link to="/report" element={<Report />}>
-          <h2>
-            <TbReport className={styles.icon} />
-          </h2>
-        </Link>
-        <Link to="/search-client" element={<SearchClient />}>
-          <h2>
-            <FaSearchengin className={styles.icon} />
-          </h2>
-        </Link>
-          <h2>
-            <RiLogoutCircleRLine className={styles.icon} style={{color:"red"}} onClick={handleLogout}/>
-          </h2>
+        )}
+        {toggleOpen === true ? (
+          <>
+            {" "}
+            <Link to="/" element={<SuperAdminDashboard />}>
+              <h2>
+                <FaHome className={styles.icon} title="Home" />
+              </h2>
+            </Link>
+            <Link to="/user-dashboard" element={<ExecutiveDashboard />}>
+              <h2>
+                <FaUsers className={styles.icon} title="User Dashboard" />
+              </h2>
+            </Link>
+            <Link to="/register" element={<Register />}>
+              <h2>
+                <FaRegistered className={styles.icon} title="Add User" />
+              </h2>
+            </Link>
+            <Link to="/setting" element={<Setting />}>
+              <h2>
+                <IoSettings className={styles.icon} title="Setting" />
+              </h2>
+            </Link>
+            <Link to="/client-page" element={<ClientPage />}>
+              <h2>
+                <GrUserAdmin className={styles.icon}  title="Client Form" />
+              </h2>
+            </Link>
+            <Link to="/userpage" element={<UserPage />}>
+              <h2>
+                <FaUserCircle className={styles.icon} title="User Form" />
+              </h2>
+            </Link>
+            <Link to="/report" element={<Report />}>
+              <h2>
+                <TbReport className={styles.icon} title="Progress" />
+              </h2>
+            </Link>
+            <Link to="/search-client" element={<SearchClient />}>
+              <h2>
+                <FaSearchengin className={styles.icon} title="Search" />
+              </h2>
+            </Link>
+            <h2>
+              <RiLogoutCircleRLine
+                className={styles.icon}
+                title="Logout"
+                style={{ color: "red" }}
+                onClick={handleLogout}
+              />
+            </h2>
+          </>
+        ) : (
+          ""
+        )}
       </div>
-    </div>
   );
-};
+}; 
 
 export default HomeNavigator;

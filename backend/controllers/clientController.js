@@ -28,7 +28,7 @@ const createClient = async (req, res) => {
             addresses, pincode, district,
             state, assignBy, assignTo,
             product, stage, quotationShare,
-            expectedDate, remarks,
+            expectedDate, remarks, label,completion,
             followUpDate, verifiedBy, tracker, amountDetails, amountHistory, action, followUpTime } = req.body;
 
         const bussiness1 = bussinessNames[0]?.value || "";
@@ -101,6 +101,8 @@ const createClient = async (req, res) => {
             action_db: action,
             database_status_db: "client_db",
             tracking_db: tracker,
+            label_db: label,
+            completion_db: completion,
             amountDetails_db: amountDetails,
             amountHistory_db: amountHistory,
         })
@@ -126,7 +128,7 @@ const updateClient = async (req, res) => {
             addresses, pincode, district,
             state, assignBy, assignTo,
             product, stage, quotationShare,
-            expectedDate, remarks,
+            expectedDate, remarks, label, completion,
             followUpDate, verifiedBy, tracker, amountDetails, amountHistory, action, followUpTime } = req.body;
 
         // Check if installation was not previously completed
@@ -213,6 +215,8 @@ const updateClient = async (req, res) => {
                     date_db: new Date().toLocaleDateString('en-GB'),
                     action_db: action,
                     database_status_db: "client_db",
+                    label_db: label,
+                    completion_db: completion,
                     tracking_db: {
                         ...tracker,
                         recovery_db: {
@@ -349,10 +353,10 @@ const searchAllClientsThroughQuery = async (req, res) => {
     }
 }
 
-//FILTER ALL CLIENT DB
+//FILTER ALL CLIENT DB BY SEARCH
 const filterClientData = async (req, res) => {
     try {
-        const { clientName, opticalName, address, mobile, email, district, state, country, hot,
+        const { clientId, clientName, opticalName, address, mobile, email, district, state, country, hot,
             followUp, demo, installation, product, defaulter, recovery, lost, dateFrom, dateTo, clientType, } = req.query;
         const { page = 1 } = req.query;
         const limit = 500;
@@ -362,6 +366,7 @@ const filterClientData = async (req, res) => {
         const filters = {}
         const orConditions = [];
 
+        if (clientId) filters.client_id = clientId
         if (clientName) filters.client_name_db = { $regex: clientName, $options: "i" }
         if (opticalName) {
             orConditions.push(
@@ -403,8 +408,8 @@ const filterClientData = async (req, res) => {
 
         if (hot === "true") filters["tracking_db.hot_db.completed"] = true
         if (followUp === "true") filters["tracking_db.follow_up_db.completed"] = true;
-        if (demo === "true") filters["tracking_db.demo_db.completed"] =  true
-        if (installation === "true") filters["tracking_db.installation_db.completed"] =  true
+        if (demo === "true") filters["tracking_db.demo_db.completed"] = true
+        if (installation === "true") filters["tracking_db.installation_db.completed"] = true
         if (defaulter === "true") filters["tracking_db.defaulter_db.completed"] = true
         if (recovery === "true") filters["tracking_db.recovery_db.completed"] = true
         if (lost === "true") filters["tracking_db.lost_db.completed"] = true
@@ -421,16 +426,16 @@ const filterClientData = async (req, res) => {
 }
 
 //FOR VIEW EXCEL DATA IN VIEW MODE IN SEARCH PAGE THIS CONTROLER TO CHECK IF CLIENT ID PRESENT IN CLIENT ID OR NOT
-const CheckClientIdforExcelSheet = async(req,res)=>{
-    try{
+const CheckClientIdforExcelSheet = async (req, res) => {
+    try {
         const clientId = req.params.id
-        const result = await clientModel.findOne({client_id:clientId})
-        res.status(200).json({message:"client found", result})
-    }catch(err){
-        console.log('internal error',err)
-        res.status(500).json({message:"internal error",err:err.message})
+        const result = await clientModel.findOne({ client_id: clientId })
+        res.status(200).json({ message: "client found", result })
+    } catch (err) {
+        console.log('internal error', err)
+        res.status(500).json({ message: "internal error", err: err.message })
     }
 }
 
 
-module.exports = { searchAllClientsThroughQuery,CheckClientIdforExcelSheet, filterClientData, searchByClientId, GenerateClientSerialNumber, createClient, updateClient, getClientsAssignedToEmployee, getCheckClientIdPresent }
+module.exports = { searchAllClientsThroughQuery, CheckClientIdforExcelSheet, filterClientData, searchByClientId, GenerateClientSerialNumber, createClient, updateClient, getClientsAssignedToEmployee, getCheckClientIdPresent }

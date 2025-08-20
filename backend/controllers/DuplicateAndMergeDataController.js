@@ -222,6 +222,7 @@ const findDuplicateRecord = async (req, res) => {
 const findDuplicateRecordBySearch = async (req, res) => {
     try {
         const {
+            clientId,
             opticalName,
             clientName,
             email,
@@ -235,11 +236,15 @@ const findDuplicateRecordBySearch = async (req, res) => {
             email,
             pincode,
             mobile)
-        if (!opticalName && !clientName && !email && !pincode && !mobile) {
+        if (!clientId && !opticalName && !clientName && !email && !pincode && !mobile) {
             return res.status(400).json({ message: "At least one field required" });
         }
 
         const matchOrConditions = [];
+
+        if (clientId) {
+            matchOrConditions.push({ client_id:  clientId });
+        }
 
         // Client Name (AND condition)
         if (clientName) {
@@ -641,52 +646,52 @@ const filterByFuzzyNameMatch = (rawClient, matchedList) => {
 
 const mergeAndDeleteFromAllDB = async (req, res) => {
     try {
-        const {page = 1} = req.query;
-        console.log("page",page)
+        const { page = 1 } = req.query;
+        console.log("page", page)
         // const page = 1
         const limit = 5
         const skip = (page - 1) * limit
-        const totalMigrateCount = await rawDataModel.countDocuments();
+        const totalMigrateCount = await rawDataModel.countDocuments({isActive_db:true});
         totalPage = Math.ceil(totalMigrateCount / limit)
 
-        const clientDoc = await rawDataModel.find({}, { client_id: 1, _id: 0 }).skip(skip).limit(limit).sort({ client_id: 1 }).lean()
+        const clientDoc = await rawDataModel.find({isActive_db:true}, { client_id: 1, _id: 0 }).skip(skip).limit(limit).sort({ client_id: 1 }).lean()
         const clientId = clientDoc.map((item) => item.client_id)
         // console.log("client", clientId)
 
         const aggregationResult = await rawDataModel.aggregate([
-            { $match: { client_id: { $in: clientId } } },
-            {
-                $addFields: {
-                    mobiles: {
-                        $filter: {
-                            input: ["$mobile_1_db", "$mobile_2_db", "$mobile_3_db"],
-                            as: "mobile",
-                            cond: { $ne: ["$$mobile", ""] }
-                        }
-                    },
-                    emails: {
-                        $filter: {
-                            input: ["$email_1_db", "$email_2_db", "$email_3_db"],
-                            as: "email",
-                            cond: { $ne: ["$email", ""] }
-                        }
-                    },
-                }
-            },
-            {
-                $addFields: {
-                    mobiles: { $sortArray: { input: "$mobiles", sortBy: 1 } },
-                    emails: { $sortArray: { input: "$emails", sortBy: 1 } }
-                }
-            },
+            { $match: { client_id: { $in: clientId },isActive_db:true } },
+            // {
+            //     $addFields: {
+            //         mobiles: {
+            //             $filter: {
+            //                 input: ["$mobile_1_db", "$mobile_2_db", "$mobile_3_db"],
+            //                 as: "mobile",
+            //                 cond: { $ne: ["$$mobile", ""] }
+            //             }
+            //         },
+            //         emails: {
+            //             $filter: {
+            //                 input: ["$email_1_db", "$email_2_db", "$email_3_db"],
+            //                 as: "email",
+            //                 cond: { $ne: ["$email", ""] }
+            //             }
+            //         },
+            //     }
+            // },
+            // {
+            //     $addFields: {
+            //         mobiles: { $sortArray: { input: "$mobiles", sortBy: 1 } },
+            //         emails: { $sortArray: { input: "$emails", sortBy: 1 } }
+            //     }
+            // },
             {
                 $group: {
                     _id: {
                         client_name_db: { $toLower: "$client_name_db" },
                         optical_name1_db: { $toLower: "$optical_name1_db" },
                         pincode_db: "$pincode_db",
-                        mobile_db: "$mobiles",
-                        email_db:"$emails",
+                        // mobile_db: "$mobiles",
+                        // email_db: "$emails",
                     },
                     doc: { $push: "$client_id" },
                     count: { $sum: 1 }
@@ -866,6 +871,7 @@ const updateDataMergeAndDelete = async (req, res) => {
                     district_db: newData.district,
                     state_db: newData.state,
                     country_db: newData.country,
+                    isActive_db:false,
 
                 }
             },
@@ -937,8 +943,8 @@ const updateDataMergeAndDelete = async (req, res) => {
         await Promise.all(selectNewDataOption.map(async (doc) => {
             if (doc !== newData.clientId) {
                 await rawDataModel.deleteOne({ client_id: doc })
-                await clientModel.deleteOne({ client_id: doc })
-                await clientSubscriptionModel.deleteOne({ client_id: doc })
+                // await clientModel.deleteOne({ client_id: doc })
+                // await clientSubscriptionModel.deleteOne({ client_id: doc })
             }
         }))
 

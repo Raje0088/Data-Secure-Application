@@ -1,4 +1,4 @@
-import React, { useState,useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import styles from "./TimePickerComponent.module.css";
 
 import { FiClock } from "react-icons/fi";
@@ -15,31 +15,50 @@ const TimePickerComponent = (props) => {
 
   const togglePicker = () => setShowPicker(!showPicker);
 
-  useEffect(()=>{
-    const handleClickOutside = (event)=>{
-      if(pickerRef.current && !pickerRef.current.contains(event.target)){
-        setShowPicker(false)
+  useEffect(() => {
+    if (props.value) {
+      if (props.value === "NA") {
+        setTime({ hour: "", minute: "", second: "", period: "" });
+      } else {
+        const [timePart, period] = props.value.split(" ");
+        const [hour, minute, second] = timePart.split(":");
+        setTime({ hour, minute, second, period });
       }
     }
+  }, [props.value]);
 
-    document.addEventListener("mousedown",handleClickOutside)
-    return ()=>{
-      document.removeEventListener("mousedown",handleClickOutside)
-    }
-  },[])
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        setShowPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleSelect = (type, value) => {
     setTime({ ...time, [type]: value });
   };
   const formatTime = () => {
     const { hour, minute, second, period } = time;
-    props.onTimeChange(`${hour || "HH"}:${minute || "MM"}:${second || "SS"} ${
-      period || "AM/PM"
-    }`)
+    props.onTimeChange(
+      `${hour || "HH"}:${minute || "MM"}:${second || "SS"} ${period || "AM/PM"}`
+    );
     return `${hour || "HH"}:${minute || "MM"}:${second || "SS"} ${
       period || "AM/PM"
     }`;
   };
+
+  useEffect(() => {
+    if (props.onTimeChange) {
+      props.onTimeChange(formatTime());
+    }
+  }, [time]);
+
   return (
     <div className={styles.timePickerWrapper} ref={pickerRef}>
       <div className={styles.timeInput} onClick={togglePicker}>

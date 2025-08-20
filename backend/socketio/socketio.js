@@ -18,6 +18,10 @@ function initializeSocket(server) {
             console.log(`${userId} joined their room`)
         })
 
+        socket.on("remainder", (data) => {
+            io.emit("remainder are", data)
+        })
+
         socket.on("disconnect", () => {
             console.log("User disconnected", socket.id);
         })
@@ -26,4 +30,4 @@ function initializeSocket(server) {
     return io;
 }
 
-module.exports = {initializeSocket, getIO: () => io};
+module.exports = { initializeSocket, getIO: () => io };

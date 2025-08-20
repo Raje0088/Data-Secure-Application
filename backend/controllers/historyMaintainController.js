@@ -6,18 +6,19 @@ const { getNextGobalCounterSequence } = require("../utils/getNextSequence")
 
 const createHistory = async (req, res) => {
     try {
-        console.log("req body", req.body)
+        // console.log("req body", req.body)
         const { clientSerialNo, clientId, userId, bussinessNames, clientName,
             numbers, emails, website,
             addresses, pincode, district,
             state, assignBy, assignTo,
             product, stage, quotationShare,
-            expectedDate, remarks,
+            expectedDate, remarks,label,completion,
             followUpDate, verifiedBy, action, followUpTime, database, tracker, amountDetails, amountHistory, isUserPage = false } = req.body;
-        console.log("tracker in history", tracker);
-        console.log("product ->", product);
-        console.log("---------------=========================-------------====>", product)
+        // console.log("tracker in history", tracker);
+        // console.log("product ->", product);
+        // console.log("---------------=========================-------------====>", product)
 
+        console.log("===========================  History label ===========================================",label)
         const bussiness1 = bussinessNames[0]?.value || "";
         const bussiness2 = bussinessNames[1]?.value || "";
         const bussiness3 = bussinessNames[2]?.value || "";
@@ -141,11 +142,13 @@ const createHistory = async (req, res) => {
             action_db: action,
             database_status_db: database,
             tracking_db: updatedTracker,
+            label_db:label,
+            completion_db:completion,
             amountDetails_db: amountDetails,
             amountHistory_db: updatedAmountHistory,
             isSubscriber_db: isFirstTimeInstallation ? true : false,
         })
-        console.log("Client History save Successfully", result)
+        // console.log("Client History save Successfully", result)
         res.status(201).json({ message: "Client History save Successfully", result })
     } catch (err) {
         console.log("internal error", err)

@@ -22,9 +22,12 @@ const userPrgressSummaryRoutes = require("./routes/userProgressSummaryRoutes.js"
 const viewExcelRoutes = require("./routes/viewExcelRoutes.js")
 const LoginRoutes = require("./routes/LoginRoutes.js")
 const autoBackupRoutes = require("./routes/autoBackupRoutes.js")
+const remainderRoutes = require("./routes/remainderRoutes.js")
 const {initializeSocket} = require("./socketio/socketio.js")
+const {startRemainder} = require("./controllers/remainderController.js")
 const path = require("path");
 app.use("/uploadExcel", express.static(path.join(__dirname, "uploadExcel")));
+
 
 dotenv.config();
 app.use(morgan("dev"));
@@ -52,15 +55,18 @@ app.use("/progress",userPrgressSummaryRoutes)
 app.use("/view-excel",viewExcelRoutes)
 app.use("/auth",LoginRoutes)
 app.use("/backup",autoBackupRoutes)
+app.use("/remainders",remainderRoutes)
 // app.use(express.static('uploadExcel'))  
 
 connectDB();
+
 autoAploadPincodeJsonData();
 createSuperAdmin() //DEFAULT USER CREATED
 const io= initializeSocket(server);  // Initialize socket.io
 
 const {setIO} = require("./socketio/socketInstance.js")
 setIO(io);
+startRemainder()
 
 setTimeout(() => {
   const { getIO } = require("./socketio/socketInstance");
@@ -70,6 +76,7 @@ setTimeout(() => {
   });
   console.log("✅ Manual test emitted");
 }, 5000);
+
 
 app.get("/", (req, res) => {
     res.send("hello");

@@ -13,10 +13,12 @@ const SearchClient = () => {
   const location = useLocation();
   // console.log("state", location.state);
   const { DumpId, DumpBy, DumpURL } = location.state || {};
+  console.log("yo",DumpId, DumpBy, DumpURL)
   const [userLoginId, setUserLoginId] = useState("SA");
 
   const [filterRaw, setFilterRaw] = useState({
     clientType: "",
+    clientId: "",
     clientName: "",
     opticalName: "",
     address: "",
@@ -95,8 +97,6 @@ const SearchClient = () => {
   const [getPresentPlace, setGetPresentPlace] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [excelData, setExcelData] = useState([]);
-  const [isViewDumpyExcelSheetData, setIsViewDumpyExcelSheetData] =
-    useState(false);
   const [searchDuplicateRecord, setSearchDuplicateRecord] = useState([]);
   const [duplicateRecord, setDuplicateRecord] = useState([]);
   const [trueClientSetter, setTrueClientSetter] = useState([]);
@@ -108,36 +108,36 @@ const SearchClient = () => {
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [isSearchDuplicate, setIsSearchDuplicate] = useState(false);
 
-  useEffect(() => {
-    const fetchExcelData = async () => {
-      try {
-        const workbook = xlsx.read(excelData, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = xlsx.utils.sheet_to_json(worksheet);
-      } catch (err) {
-        console.log("internal error", err);
-      }
-    };
-    fetchExcelData();
-  }, [DumpBy]);
+  // useEffect(() => {
+  //   const fetchExcelData = async () => {
+  //     try {
+  //       const workbook = xlsx.read(excelData, { type: "array" });
+  //       const sheetName = workbook.SheetNames[0];
+  //       const worksheet = workbook.Sheets[sheetName];
+  //       const json = xlsx.utils.sheet_to_json(worksheet);
+  //     } catch (err) {
+  //       console.log("internal error", err);
+  //     }
+  //   };
+  //   fetchExcelData();
+  // }, [DumpBy]);
 
   useEffect(() => {
     const showExcelData = async () => {
       setIsLoading(true);
       try {
         const result = await axios.get(
-          `http://localhost:3000/raw-data/excel-data/${DumpId}`
+          `${base_url}/raw-data/excel-data/${DumpId}`
         );
 
-        console.log("jsonData", result.data.result);
-        // const resultClient = await axios.get(`http://localhost:3000/raw-data/excel-data/`)
+        console.log("jsonData", result.data);
+        // const resultClient = await axios.get(`${base_url}/raw-data/excel-data/`)
 
         const obj = result.data.result;
         const clientChecker = await Promise.all(
           obj.map(async (doc) => {
             const isPresent = await axios.get(
-              `http://localhost:3000/clients/checkclientIdforexcelsheet/${doc.client_id}`
+              `${base_url}/clients/checkclientIdforexcelsheet/${doc.client_id}`
             );
             // console.log("doc",doc.client_id,!!isPresent.data.result)
             return { id: doc.client_id, setter: !!isPresent.data.result };
@@ -148,7 +148,7 @@ const SearchClient = () => {
         const userChecker = await Promise.all(
           obj.map(async (doc) => {
             const isPresent = await axios.get(
-              `http://localhost:3000/subscribe-user/checkuseridpresent/${doc.client_id}`
+              `${base_url}/subscribe-user/checkuseridpresent/${doc.client_id}`
             );
             return {
               id: doc.client_id,
@@ -175,7 +175,7 @@ const SearchClient = () => {
   useEffect(() => {
     const fetchPlaces = async () => {
       const result = await axios.get(
-        "http://localhost:3000/pincode/fetch-pincode-rawdb"
+        `${base_url}/pincode/fetch-pincode-rawdb`
       );
       // console.log("place", result.data);
       setGetPresentPlace(result.data);
@@ -187,7 +187,7 @@ const SearchClient = () => {
     const fetch = async () => {
       try {
         const getPincode = await axios.get(
-          "http://localhost:3000/pincode/search-getplaces",
+          `${base_url}/pincode/search-getplaces`,
           {
             params: {
               state: filterRaw.state,
@@ -229,7 +229,7 @@ const SearchClient = () => {
       if (filterRaw.clientType === "RAW") {
         console.log("raw");
         result = await axios.get(
-          // `http://localhost:3000/raw-data/filters-rawdata`,
+          // `${base_url}/raw-data/filters-rawdata`,
           `${base_url}/raw-data/filters-rawdata`,
           {
             params: { ...filterRaw, page: pageNum },
@@ -238,7 +238,7 @@ const SearchClient = () => {
       }
       if (filterRaw.clientType === "CLIENT") {
         result = await axios.get(
-          // `http://localhost:3000/clients/filter-clientdata`,
+          // `${base_url}/clients/filter-clientdata`,
           `${base_url}/clients/filter-clientdata`,
           {
             params: { ...filterRaw, page: pageNum },
@@ -249,7 +249,7 @@ const SearchClient = () => {
       if (filterRaw.clientType === "USER") {
         console.log("user");
         result = await axios.get(
-          `http://localhost:3000/subscribe-user/filter-clientsubscribedata`,
+          `${base_url}/subscribe-user/filter-clientsubscribedata`,
           {
             params: { ...filterRaw, page: pageNum },
           }
@@ -276,6 +276,7 @@ const SearchClient = () => {
     try {
       let result;
       if (
+        filterRaw.clientId ||
         filterRaw.opticalName ||
         filterRaw.mobile ||
         filterRaw.email ||
@@ -466,7 +467,7 @@ const SearchClient = () => {
         return alert("Please select checkboxes");
       }
       const result = await axios.post(
-        "http://localhost:3000/raw-data/mergeanddelete",
+        `${base_url}/raw-data/mergeanddelete`,
         { ...fields, selectedClients },
         {
           headers: {
@@ -538,7 +539,7 @@ const SearchClient = () => {
     setPage(pageNum);
     try {
       const result = await axios.get(
-        "http://localhost:3000/raw-data/mergefrom-alldb",
+        `${base_url}/raw-data/mergefrom-alldb`,
         {
           params: { page: pageNum },
         }
@@ -613,7 +614,7 @@ const SearchClient = () => {
       // return alert("please select USER type and State")
     }
     try {
-      const url = "http://localhost:3000/utils/excel-download";
+      const url = `${base_url}/utils/excel-download`;
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -859,7 +860,7 @@ const SearchClient = () => {
     try {
       console.log(newData, selectNewDataOption);
       const result = await axios.post(
-        "http://localhost:3000/clients/updateclient-merge-delete",
+        `${base_url}/clients/updateclient-merge-delete`,
         {
           newData,
           selectNewDataOption,
@@ -877,7 +878,7 @@ const SearchClient = () => {
         deleteId_db: deleteIds,
       };
       const resultRecordTracker = await axios.put(
-        "http://localhost:3000/view-excel/recordtracker",
+        `${base_url}/view-excel/recordtracker`,
         {
           userId: userLoginId,
           recordTracker: recordTracker,
@@ -886,6 +887,7 @@ const SearchClient = () => {
       console.log("result", resultRecordTracker.data);
       alert(result.data.message);
       alert(resultRecordTracker.data.message);
+      handleAndMergeInThreeDB(1)
     } catch (err) {
       console.log("internal error", err);
       if (
@@ -955,6 +957,17 @@ const SearchClient = () => {
                 <option value="CLIENT">CLIENT</option>
                 <option value="USER">USER</option>
               </select>
+            </span>
+            <span style={{ display: "flex", flexDirection: "column" }}>
+              <label htmlFor="product">Client Id </label>
+              <input
+                type="text"
+                value={filterRaw.clientId}
+                className={styles["filterfield-input"]}
+                onChange={(e) => {
+                  handleSearchInput("clientId", e.target.value);
+                }}
+              />
             </span>
             <span style={{ display: "flex", flexDirection: "column" }}>
               <label htmlFor="product">Product </label>
@@ -2248,7 +2261,7 @@ const SearchClient = () => {
             </div>
           </div>
           <h2 style={{ width: "100%", textAlign: "end" }}>
-            Note: Get filtered by ClientName, OpticalName, Pincode, Mobile
+            Note: Get filtered by ClientName, OpticalName, Pincode
           </h2>
           {duplicateCheckerThreeDB.duplicates.map((group, groupIdx) => (
             <div className={styles.threedbcol}>
@@ -2309,7 +2322,13 @@ const SearchClient = () => {
                           />
                         </td>
                         <td>{idx + 1}</td>
-                        <td>{item.client_id}</td>
+                        <td>                            <input
+                              type="radio"
+                              name="clientId"
+                              onChange={() => {
+                                handleUpdateInput("clientId", item.client_id);
+                              }}
+                            />{" "}{item.client_id}</td>
                         <td>
                           <input
                             type="checkbox"

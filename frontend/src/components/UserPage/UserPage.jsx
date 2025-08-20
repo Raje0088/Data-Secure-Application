@@ -17,6 +17,7 @@ import { FaFlag } from "react-icons/fa";
 import { FaUserClock } from "react-icons/fa6";
 import History from "../HistoryPage/History";
 import { HiOutlineRefresh } from "react-icons/hi";
+import { base_url } from "../../config/config";
 
 const UserPage = () => {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ const UserPage = () => {
   const [quotationYesNo, setQuotationYesNo] = useState(false);
   const [feedback, setFeedback] = useState(false);
   const [isUnsavedNewForm, setIsUnsavedNewForm] = useState(false);
+  const [getSelectedNewTime, setGetSelectedNewTime] = useState("");
   const [clientDetails, setClientDetails] = useState({
     sr_no: "",
     clientId: "",
@@ -81,6 +83,15 @@ const UserPage = () => {
       update_db: { completed: false, completedDate: "" },
       deactivate_db: { completed: false, completedDate: "" },
     },
+    label: "",
+    completion: {
+      receivedProduct: "",
+      status: "",
+      newExpectedDate: "",
+      newTime: "",
+      newRemark: "",
+      newStage: "",
+    },
     amountDetails: {
       totalAmount: "",
       paidAmount: "",
@@ -110,6 +121,8 @@ const UserPage = () => {
     { label: "Lost", value: "lost_db" },
     { label: "Follow up", value: "follow_up_db" },
     { label: "Recovery", value: "recovery_db" },
+    { label: "In-process", value: "in-process_db" },
+    { label: "Dispatched", value: "dispatched_db" },
   ]);
   const [selectedStageOptions, setSelectedStageOptions] = useState([]);
   const [userProductList, setUserProductList] = useState([]);
@@ -127,7 +140,7 @@ const UserPage = () => {
   const [clientCount, setClientCount] = useState("");
   const [currentClientCount, setCurrentClientCount] = useState(1);
   const [isClientIdAvailableInDb, setIsClientIdAvailableInDb] = useState("");
-  const [userLoginId, setUserLoginId] = useState("E02_SA");
+  const [userLoginId, setUserLoginId] = useState("SA");
   const [checkRecovery, setCheckRecovery] = useState(true);
   const [checkInstallation, setCheckInstallation] = useState(false);
   const [checkHotClient, setCheckHotClient] = useState(false);
@@ -139,6 +152,17 @@ const UserPage = () => {
   const [storedPaidAmount, setStoredPaidAmount] = useState("");
   const [storedBalanceAmount, setStoredBalanceAmount] = useState("");
   const [refreshHistory, setRefreshHistory] = useState(false);
+  const [stageTab, setStageTab] = useState("Planner");
+
+  useEffect(() => {
+    setClientDetails((prev) => ({
+      ...prev,
+      completion: {
+        ...prev.completion,
+        newTime: getSelectedNewTime,
+      },
+    }));
+  }, [getSelectedNewTime]);
 
   useEffect(() => {
     const fetchUserIds = async () => {
@@ -235,7 +259,7 @@ const UserPage = () => {
           callType: detail.callType_db,
           verifiedBy: detail.verifiedBy_db,
           time: detail.time_db,
-
+          label: detail.label_db,
           website: detail.website_db,
           database: detail.database_status_db,
           bussinessNames: businessFields,
@@ -248,6 +272,10 @@ const UserPage = () => {
           country: detail.country_db,
           remarks: detail.remarks_db,
           amountDetails: detail.amountDetails_db,
+          completion: {
+            ...prev.completion,
+            receivedProduct: detail?.product_db?.[0]?.label || "",
+          },
         }));
         setStoredTotalAmount(
           parseFloat(detail.amountDetails_db.totalAmount) || 0
@@ -265,7 +293,7 @@ const UserPage = () => {
     };
 
     fetchUserData();
-  }, [currentClientId]);
+  }, [currentClientId, refresh]);
 
   //WHEN PINCODE ENTER AUTO FETCH STATE,DISTRICT, DEBOUNCING USED
   useEffect(() => {
@@ -359,6 +387,29 @@ const UserPage = () => {
       }
     };
     userProductFetch();
+  }, []);
+
+  //FETCHING USER PRODUCTLIST OF SA
+  useEffect(() => {
+    const fetchSAproductList = async () => {
+      try {
+        const result = await axios.get(
+          `${base_url}/setting/get-superadmin-product`
+        );
+        console.log("product", result.data.result);
+        const productsList = result.data.result?.map((item) => ({
+          label: item.assign_product_name,
+          value: item.assign_product_name,
+        }));
+        console.log("Super admin product===============", productsList);
+        setUserProductList(productsList);
+      } catch (err) {
+        console.log("internal error", err);
+      }
+    };
+    if (userLoginId === "SA") {
+      fetchSAproductList();
+    }
   }, []);
 
   //FETCHING PERMISSION OF USER CREATE,UPDATE,DELETE
@@ -524,6 +575,13 @@ const UserPage = () => {
     }
     setGetSelectedTime(time);
   };
+  const handleNewTimeChange = (time) => {
+    if (time === "HH:MM:SS AM/PM") {
+      time = "NA";
+    }
+    setGetSelectedNewTime(time);
+    // console.log("Selected Time:", time);
+  };
   const handlePrevButton = () => {
     if (userIndex > 0) {
       setUserIndex((prev) => prev - 1);
@@ -578,6 +636,8 @@ const UserPage = () => {
           amountDetails: clientDetails.amountDetails,
           amountHistory: clientDetails.amountHistory,
           followUpTime: getSelectedTime,
+          label: clientDetails.label,
+          completion: clientDetails.completion,
           action: "update User",
         }
       );
@@ -622,6 +682,8 @@ const UserPage = () => {
           amountHistory: clientDetails.amountHistory,
           isUserPage: true,
           followUpTime: getSelectedTime,
+          label: clientDetails.label,
+          completion: clientDetails.completion,
           action: "update User",
         }
       );
@@ -631,9 +693,77 @@ const UserPage = () => {
       }
 
       setRefreshHistory((prev) => !prev);
+      setRefresh((prev) => !prev);
     } catch (err) {
       console.log("internal error", err);
     }
+  };
+
+  const handleNewVisit = () => {
+    setSelectedUserProduct([]);
+    setSelectedStageOptions([]);
+    handleTimeChange("HH:MM:SS AM/PM");
+    setCheckRecovery(false);
+    setClientDetails((prev) => ({
+      ...prev,
+      followUpTime: "",
+      expectedDate: "",
+      remarks: "",
+      callType: "",
+      quotationShare: "",
+      tracker: {
+        new_data_db: { completed: false, completedDate: "" },
+        leads_db: { completed: false, completedDate: "" },
+        training_db: { completed: false, completedDate: "" },
+        follow_up_db: { completed: false, completedDate: "" },
+        installation_db: { completed: false, completedDate: "" },
+        demo_db: { completed: false, completedDate: "" },
+        recovery_db: {
+          completed: false,
+          completedDate: "",
+          recoveryHistory: [],
+        },
+        target_db: { completed: false, completedDate: "" },
+        no_of_new_calls_db: { completed: false, completedDate: "" },
+        support_db: { completed: false, completedDate: "" },
+        out_bound_db: { completed: false, completedDate: "" },
+        in_bound_db: { completed: false, completedDate: "" },
+        hot_db: { completed: false, completedDate: "" },
+        lost_db: { completed: false, completedDate: "" },
+        create_db: { completed: false, completedDate: "" },
+        update_db: { completed: false, completedDate: "" },
+        deactivate_db: { completed: false, completedDate: "" },
+      },
+      label: "",
+      completion: {
+        receivedProduct: "",
+        status: "",
+        newExpectedDate: "",
+        newTime: "",
+        newRemark: "",
+      },
+      amountDetails: {
+        totalAmount: "",
+        paidAmount: "",
+        extraCharges: "",
+        finalCost: "",
+        newAmount: "",
+        balanceAmount: "",
+      },
+      amountHistory: [
+        {
+          date: "",
+          time: "",
+          totalAmount: "",
+          paidAmount: "",
+          extraCharges: "",
+          finalCost: "",
+          newAmount: "",
+          balanceAmount: "",
+          updatedBy: "",
+        },
+      ],
+    }));
   };
 
   return (
@@ -1027,10 +1157,39 @@ const UserPage = () => {
               </div>
             </div>
           </div>
+          {/* =========================FEEDBACK================================ */}
+
           <div className={styles.feedback}>
+            <div className={styles.scheduleTab}>
+              <p
+                onClick={() => {
+                  setStageTab("Planner");
+                }}
+                className={stageTab === "Planner" && styles.scheduleTab1}
+              >
+                Planner
+              </p>
+              <p
+                onClick={() => {
+                  setStageTab("Completion");
+                }}
+                className={stageTab === "Completion" && styles.scheduleTab1}
+              >
+                Completion
+              </p>
+            </div>
             <h2 style={{ fontSize: "18px" }}>Feedback </h2>
+            <div style={{ position: "absolute", right: "10px" }}>
+              <button onClick={handleNewVisit}>New Visit</button>
+            </div>
           </div>
-          <div className={styles["formlayout-down"]}>
+
+          {/* ================================= PLANNER ============================================================= */}
+
+          <div
+            style={{ display: stageTab === "Planner" ? "" : "none" }}
+            className={styles["formlayout-down"]}
+          >
             <div
               style={{
                 width: "100%",
@@ -1160,7 +1319,10 @@ const UserPage = () => {
                 >
                   Follow Up Time
                 </label>
-                <TimePickerComponent onTimeChange={handleTimeChange} />
+                <TimePickerComponent
+                  value={getSelectedTime}
+                  onTimeChange={handleTimeChange}
+                />
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1255,6 +1417,30 @@ const UserPage = () => {
                     <option value="In-bound">In-bound</option>
                   </select>
                 </div>
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "5px",
+                  }}
+                >
+                  Label
+                  <select
+                    name=""
+                    id=""
+                    style={{ padding: "2px 10px", width: "60%" }}
+                    value={clientDetails.label}
+                    onChange={(e) => {
+                      handleSearchInput("label", e.target.value);
+                    }}
+                  >
+                    <option value="NA">NA</option>
+                    <option value="Hot">Hot</option>
+                    <option value="Interested">Interested</option>
+                    <option value="Less Interested">Less Interested</option>
+                  </select>
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <label htmlFor="">Remark</label>
@@ -1267,7 +1453,7 @@ const UserPage = () => {
                 ></textarea>
               </div>
             </div>
-            {checkRecovery ? (
+            {checkRecovery === true ? (
               <div
                 className={styles.recovery}
                 style={{ width: "90%", padding: "10px" }}
@@ -1332,6 +1518,188 @@ const UserPage = () => {
               <div></div>
             )}
           </div>
+
+          {/* =================================== COMPLETION ========================================================             */}
+
+          <div
+            style={{ display: stageTab === "Completion" ? "" : "none" }}
+            className={styles["formlayout-down"]}
+          >
+            <div
+              style={{
+                width: "100%",
+                display: "flex",
+                gap: "5px",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "5px",
+                }}
+              >
+                Product
+                <input
+                  type="text"
+                  name=""
+                  id=""
+                  style={{ padding: "2px 10px", width: "60%" }}
+                  value={clientDetails.completion.receivedProduct}
+                />
+              </div>
+
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  marginBottom: "5px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  Stage
+                  <select
+                    name=""
+                    id=""
+                    style={{ padding: "2px 10px", width: "60%" }}
+                    value={clientDetails.completion.newStage}
+                    onChange={(e) => {
+                      setClientDetails((prev) => ({
+                        ...prev,
+                        completion: {
+                          ...prev.completion,
+                          newStage: e.target.value,
+                        },
+                      }));
+                    }}
+                  >
+                    <option value="">--Select--</option>
+                    <option value="Demo">Demo</option>
+                    <option value="FollowUp">FollowUp</option>
+                    <option value="Installation">Installation</option>
+                    <option value="Hot">Hot</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                // background: "red",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  marginBottom: "5px",
+                }}
+              >
+                Expected Close Date
+                <input
+                  type="date"
+                  name=""
+                  id=""
+                  style={{ padding: "0px 10px", width: "30%" }}
+                  value={clientDetails.completion.newExpectedDate}
+                  onChange={(e) => {
+                    setClientDetails((prev) => ({
+                      ...prev,
+                      completion: {
+                        ...prev.completion,
+                        newExpectedDate: e.target.value,
+                      },
+                    }));
+                  }}
+                />
+              </div>
+              <div style={{ position: "absolute", top: "0px", right: "10%" }}>
+                <label
+                  htmlFor=""
+                  style={{ fontSize: "16px", fontWeight: "500" }}
+                >
+                  Follow Up Time
+                </label>
+                <TimePickerComponent
+                  value={getSelectedNewTime}
+                  onTimeChange={handleNewTimeChange}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  gap: "5px",
+                }}
+              ></div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <label htmlFor="">Remark</label>
+                <textarea
+                  className={styles["remarks-field"]}
+                  value={clientDetails.completion.newRemark}
+                  onChange={(e) => {
+                    setClientDetails((prev) => ({
+                      ...prev,
+                      completion: {
+                        ...prev.completion,
+                        newRemark: e.target.value,
+                      },
+                    }));
+                  }}
+                ></textarea>
+              </div>
+            </div>
+
+            <div
+              style={{
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+                marginBottom: "5px",
+              }}
+            >
+              Status
+              <select
+                name=""
+                id=""
+                style={{ padding: "2px 10px", width: "30%" }}
+                value={clientDetails.completion.status}
+                onChange={(e) => {
+                  setClientDetails((prev) => ({
+                    ...prev,
+                    completion: {
+                      ...prev.completion,
+                      status: e.target.value,
+                    },
+                  }));
+                }}
+              >
+                <option value="">--Select--</option>
+                <option value="Done">Done</option>
+                <option value="Postponed">Postponed</option>
+                <option value="Cancel">Cancel</option>
+              </select>
+            </div>
+          </div>
+
           <div className={styles.btn}>
             <div
               className={styles["arrow-icon"]}

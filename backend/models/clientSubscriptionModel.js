@@ -21,7 +21,7 @@ const clientSubscriptionSchema = new mongoose.Schema({
     district_db: String,
     state_db: String,
     pincode_db: String,
-    mobile_1_db: { type: String, required: false },
+    mobile_1_db: { type: String, required: true },
     mobile_2_db: { type: String, required: false, default: "" },
     mobile_3_db: { type: String, required: false, default: "" },
     email_1_db: { type: String, required: false },
@@ -35,7 +35,7 @@ const clientSubscriptionSchema = new mongoose.Schema({
     expectedDate_db: String,
     verifiedBy_db: String,
     stage_db: { type: Array },
-    product_db:  { type: Array },
+    product_db: { type: Array },
     country_db: { type: String, default: "INDIA" },
     time_db: String,
     date_db: String,
@@ -43,6 +43,7 @@ const clientSubscriptionSchema = new mongoose.Schema({
     isSubscriber_db: { type: Boolean, default: true },
     totalAmount_db: { type: Number, default: 0 },
     paidAmount_db: { type: Number, default: 0 },
+    label_db: String,
     tracking_db: {
         new_data_db: { completed: { type: Boolean, default: false }, completedDate: String },
         leads_db: { completed: { type: Boolean, default: false }, completedDate: String },
@@ -76,6 +77,14 @@ const clientSubscriptionSchema = new mongoose.Schema({
         enum: ["client_db", "raw_db", "user_db"],
         default: "client_db",
     },
+    completion_db: {
+        receivedProduct: String,
+        status: String,
+        newExpectedDate: String,
+        newTime: String,
+        newRemark: String,
+        newStage: String,
+    },
     amountDetails_db: {
         totalAmount: { type: Number, default: 0 },
         paidAmount: { type: Number, default: 0 },
@@ -95,7 +104,7 @@ const clientSubscriptionSchema = new mongoose.Schema({
             finalCost: { type: Number },
             newAmount: { type: Number },
             balanceAmount: { type: Number },
-            updatedBy: { type: String  }       // store userId or name
+            updatedBy: { type: String }       // store userId or name
         }
     ]
 

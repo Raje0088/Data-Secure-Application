@@ -19,7 +19,7 @@ const clientHistorySchema = new mongoose.Schema({
     address_1_db: { type: String, required: false },
     address_2_db: { type: String, required: false, default: "" },
     address_3_db: { type: String, required: false, default: "" },
-    mobile_1_db: { type: String, required: false },
+    mobile_1_db: { type: String, required: true },
     mobile_2_db: { type: String, required: false, default: "" },
     mobile_3_db: { type: String, required: false, default: "" },
     email_1_db: { type: String, required: false },
@@ -37,7 +37,7 @@ const clientHistorySchema = new mongoose.Schema({
     expectedDate_db: String,
     verifiedBy_db: String,
     stage_db: { type: Array },
-    product_db:  { type: Array },
+    product_db: { type: Array },
     time_db: String,
     date_db: String,
     isActive_db: { type: Boolean, default: true },
@@ -63,6 +63,15 @@ const clientHistorySchema = new mongoose.Schema({
         update_db: { completed: { type: Boolean, default: false }, completedDate: String },
         deactivate_db: { completed: { type: Boolean, default: false }, completedDate: String },
     },
+    label_db: String,
+    completion_db: {
+        receivedProduct: String,
+        status: String,
+        newExpectedDate: String,
+        newTime: String,
+        newRemark: String,
+        newStage: String,
+    },
     amountDetails_db: {
         totalAmount: { type: Number, default: 0 },
         paidAmount: { type: Number, default: 0 },
@@ -82,7 +91,7 @@ const clientHistorySchema = new mongoose.Schema({
             finalCost: { type: Number },
             newAmount: { type: Number },
             balanceAmount: { type: Number },
-            updatedBy: { type: String  }        // store userId or name
+            updatedBy: { type: String }        // store userId or name
         }
     ],
     assignBy: {

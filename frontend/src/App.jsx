@@ -19,6 +19,7 @@ import Backup from "./Pages/Backup.jsx";
 // import Layout from "./Pages/Layout.jsx";
 import AuthProvider from "./context-api/AuthContext.jsx";
 import Protected from "./Pages/Protected.jsx";
+// import 'bootstrap/dist/css/bootstrap.min.css';
 
 function App() {
   return (

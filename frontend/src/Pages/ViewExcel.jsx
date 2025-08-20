@@ -62,13 +62,7 @@ const ViewExcel = () => {
   }, [seletedFields.userId, seletedFields.fromDate, seletedFields.toDate]);
 
   const goToSearchClient = (item) => {
-    navigate("/search-client", {
-      state: {
-        DumpId: item.dumpBy_db ,
-        DumpBy: item.userId_db,
-        DumpURL : item.excelURL_db
-      },
-    });
+    navigate("/search-client", { state: { DumpId: item.dumpBy_db , DumpBy: item.userId_db, DumpURL : item.excelURL_db },   });
   };
 
   console.log("excel view", seletedFields);

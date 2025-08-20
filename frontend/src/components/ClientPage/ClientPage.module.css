@@ -189,7 +189,8 @@ tr:nth-child(even) {
   border-top: 2px dotted;
   margin-top: 2px;
   padding-top: 2px;
-  gap:20px;
+  gap: 20px;
+  position: relative;
 }
 .recovery {
   display: flex;
@@ -210,6 +211,7 @@ tr:nth-child(even) {
   padding: 5px;
   gap: 20px;
 }
+
 .arrow-icon {
   background-color: gray;
   width: 40px;
@@ -219,4 +221,35 @@ tr:nth-child(even) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-} 
+}
+.scheduleTab {
+  position: absolute;
+  left: 5px;
+  display: flex;
+
+  gap: 20px;
+  background-color: hsl(0, 0%, 80%);
+  /* padding: 0 8px; */
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  cursor: pointer;
+  width: 200px;
+  align-items: center;
+  justify-content: space-evenly;
+  border-top: 1px solid;
+  border-right: 1px solid;
+  border-left: 1px solid;
+}
+.scheduleTab1 {
+  background-color: white;
+  /* padding-left: 2px; */
+  /* padding-right: 2px; */
+  /* margin-top: 2px; */
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  font-size: 16px;
+  font-weight: 600;
+  width: 50%;
+  text-align: center;
+
+}

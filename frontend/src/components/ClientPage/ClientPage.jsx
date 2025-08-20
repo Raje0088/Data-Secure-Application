@@ -26,10 +26,8 @@ const SearchPincode = () => {
   const { state, from } = useLocation();
   const executiveId = state?.userId || "E02_SA";
   const [getSelectedTime, setGetSelectedTime] = useState("");
-  let taskDetails = state?.taskdata || "";
-  taskDetails = state?.selectedClients;
-  // console.log("executiveId--", userLoginId);
-  // console.log("taskDetails--", taskDetails);
+  const [taskDetails, setTaskDetails] = useState(null);
+
   const [region, setRegion] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
   const [stateOptions, setStateOptions] = useState([]);
@@ -39,6 +37,7 @@ const SearchPincode = () => {
   const [quotationYesNo, setQuotationYesNo] = useState(false);
   const [feedback, setFeedback] = useState(false);
   const [isUnsavedNewForm, setIsUnsavedNewForm] = useState(false);
+  const [getSelectedNewTime, setGetSelectedNewTime] = useState("");
   const [clientDetails, setClientDetails] = useState({
     sr_no: "",
     clientId: "",
@@ -85,6 +84,15 @@ const SearchPincode = () => {
       update_db: { completed: false, completedDate: "" },
       deactivate_db: { completed: false, completedDate: "" },
     },
+    label: "",
+    completion: {
+      receivedProduct: "",
+      status: "",
+      newExpectedDate: "",
+      newTime: "",
+      newRemark: "",
+      newStage: "",
+    },
     amountDetails: {
       totalAmount: "",
       paidAmount: "",
@@ -113,7 +121,10 @@ const SearchPincode = () => {
     { label: "Hot", value: "hot_db" },
     { label: "Lost", value: "lost_db" },
     { label: "Follow up", value: "follow_up_db" },
+    { label: "In-process", value: "in-process_db" },
+    { label: "Dispatched", value: "dispatched_db" },
   ]);
+
   const [selectedStageOptions, setSelectedStageOptions] = useState([]);
   const [userProductList, setUserProductList] = useState([]);
   const [mapClientAllHistory, setMapClientAllHistory] = useState([]);
@@ -139,6 +150,7 @@ const SearchPincode = () => {
   const [selectedUserProduct, setSelectedUserProduct] = useState([]);
   const [refreshHistory, setRefreshHistory] = useState(false);
   const [isNewDataEntry, setIsNewDataEntry] = useState(false);
+  const [stageTab, setStageTab] = useState("Planner");
 
   //FETCHING ASSIGN TASK BY SA/ADMIN TO USER BY USING ARRAY TO
   // useEffect(() => {
@@ -171,9 +183,34 @@ const SearchPincode = () => {
   //     setIsTaskMode(false);
   //   }
   // }, [isTaskMode]);
+
   useEffect(() => {
+    setClientDetails((prev) => ({
+      ...prev,
+      completion: {
+        ...prev.completion,
+        newTime: getSelectedNewTime,
+      },
+    }));
+  }, [getSelectedNewTime]);
+
+  useEffect(() => {
+    if (state?.from === "searchClient") {
+      setTaskDetails(state?.selectedClients);
+    } else if (state?.from === "remainder") {
+      setTaskDetails([state?.id]);
+    } else {
+      setTaskDetails(state?.taskdata ? [state.taskdata] : []);
+    }
+
+    // console.log("executiveId--", userLoginId);
+    console.log("taskDetails--", taskDetails);
+  }, [state]);
+
+  useEffect(() => {
+    if (!taskDetails) return;
     console.log("taskDetails in useEffect", taskDetails);
-    if (taskDetails?.length > 0 || taskDetails) {
+    if (taskDetails?.length > 0) {
       setTaskClientIdArray(taskDetails);
       setCurrentClientId(taskDetails[0]);
       setTaskIndex(0);
@@ -181,6 +218,7 @@ const SearchPincode = () => {
       setClientCount(taskDetails.length);
     } else {
       const storeId = localStorage.getItem("lastClientId");
+      console.log("taskDetails in useEffect else part bor", storeId);
       if (storeId) {
         setCurrentClientId(storeId);
       } else {
@@ -245,12 +283,12 @@ const SearchPincode = () => {
 
       if (detail) {
         const businessFields = [
-          { label: "Business Name", value: detail.optical_name1_db },
+          { label: "Business Name *", value: detail.optical_name1_db },
           { label: "Business Name 2", value: detail.optical_name2_db },
           { label: "Business Name 3", value: detail.optical_name3_db },
         ];
         const mobiles = [
-          { label: "Primary Number", value: detail.mobile_1_db },
+          { label: "Primary Number *", value: detail.mobile_1_db },
           { label: "Secondary Number", value: detail.mobile_2_db },
           { label: "Tertiary Number", value: detail.mobile_3_db },
         ];
@@ -300,9 +338,13 @@ const SearchPincode = () => {
           callType: detail.callType_db,
           verifiedBy: detail.verifiedBy_db,
           time: detail.time_db,
-          // product: detail.product_db,
+          label: detail.label_db,
           website: detail.website_db,
           database: detail.database_status_db,
+          completion: {
+            ...prev.completion,
+            receivedProduct: detail?.product_db?.[0]?.label || "",
+          },
         }));
         if (
           detail.quotationShare_db &&
@@ -328,7 +370,7 @@ const SearchPincode = () => {
       }
     };
     fetch();
-  }, [currentClientId]);
+  }, [currentClientId, refresh]);
 
   //WHEN PINCODE ENTER AUTO FETCH STATE,DISTRICT, DEBOUNCING USED
   useEffect(() => {
@@ -411,7 +453,7 @@ const SearchPincode = () => {
   }, [clientDetails.pincode, clientDetails.district, clientDetails.state]);
 
   const handleSearchInput = (name, value) => {
-    console.log(value);
+    console.log(name, value);
     setClientDetails((prev) => ({
       ...prev,
       [name]: value,
@@ -422,15 +464,32 @@ const SearchPincode = () => {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const result = await axios.get(
-          `${base_url}/users/search-by-user/${userLoginId}`
-        );
-        console.log("product", result?.data?.assignProduct);
-        const productsList = result?.data?.assignProduct?.map((item) => ({
-          label: item,
-          value: item,
-        }));
-        console.log("product", productsList);
+        const tempUserId = localStorage.getItem("userLoginId");
+        let result;
+        let productsList;
+        if (tempUserId === "SA" || userLoginId === "SA") {
+          result = await axios.get(
+            `${base_url}/setting/get-superadmin-product`
+          );
+          // console.log("SA bro");
+          // console.log("product", result?.data.result);
+          productsList = result?.data?.result?.map((prod) => ({
+            label: prod.assign_product_name,
+            value: prod.assign_product_name,
+          }));
+        } else {
+          result = await axios.get(
+            `${base_url}/users/search-by-user/${userLoginId}`
+          );
+          // console.log("User");
+          // console.log("product", result?.data?.assignProduct);
+          productsList = result?.data?.assignProduct?.map((item) => ({
+            label: item,
+            value: item,
+          }));
+        }
+
+        // console.log("product============", productsList);
         setUserProductList(productsList);
       } catch (err) {
         console.log("internal error", err);
@@ -438,27 +497,6 @@ const SearchPincode = () => {
     };
     fetch();
   }, []);
-
-    //FETCHING USER PRODUCTLIST OF SA
-  useEffect(() => {
-    const fetchSAproductList = async () => {
-      try {
-        const result = await axios.get(`${base_url}/setting/get-superadmin-product`);
-        console.log("product", result.data.result);
-        const productsList = result.data.result?.map((item) => ({
-          label: item.assign_product_name,
-          value: item.assign_product_name,
-        }));
-        console.log("Super admin product===============", productsList);
-        setUserProductList(productsList);
-      } catch (err) {
-        console.log("internal error", err);
-      }
-    };
-    if(userLoginId==="SA"){
-      fetchSAproductList()
-    }
-  },[]);
 
   //FETCHING PERMISSION OF USER CREATE,UPDATE,DELETE
   useEffect(() => {
@@ -523,8 +561,8 @@ const SearchPincode = () => {
           district: clientDetails.district,
           state: clientDetails.state,
           country: clientDetails.country,
-          assignBy: taskDetails.assignBy_db || "NA",
-          assignTo: taskDetails.assignTo_db || userLoginId,
+          assignBy: taskDetails?.assignBy_db || "NA",
+          assignTo: taskDetails?.assignTo_db || userLoginId,
           product: selectedUserProduct.map((prod) => ({
             label: prod.label,
             value: prod.value,
@@ -540,14 +578,16 @@ const SearchPincode = () => {
           followUpDate: clientDetails.followUpDate,
           verifiedBy: clientDetails.verifiedBy,
           tracker: clientDetails.tracker,
+          label: clientDetails.label,
           amountDetails: clientDetails.amountDetails,
           amountHistory: updatedHistory,
           followUpTime: getSelectedTime,
+          completion: clientDetails.completion,
           action: "create User",
         },
         {
           headers: {
-            generateuniqueid: taskDetails.assignTo_db || userLoginId,
+            generateuniqueid: taskDetails?.assignTo_db || userLoginId,
             "Content-Type": "application/json",
           },
         }
@@ -566,7 +606,12 @@ const SearchPincode = () => {
   const handleSaveClientDetails = async () => {
     // console.log("tracker", clientDetails.tracker);
     console.log("tracker", userLoginId);
-
+    if (!clientDetails.bussinessNames[0]?.value) {
+      return alert("First business name cannot be Empty");
+    }
+    if (!clientDetails.numbers[0]?.value) {
+      return alert("First Mobile Field cannot be Empty");
+    }
     try {
       if (isNewDataEntry) {
         clientDetails.tracker.new_data_db = {
@@ -677,9 +722,11 @@ const SearchPincode = () => {
           followUpDate: clientDetails.followUpDate,
           verifiedBy: clientDetails.verifiedBy,
           tracker: clientDetails.tracker,
+          label: clientDetails.label,
           amountDetails: clientDetails.amountDetails,
           amountHistory: updatedHistory,
           followUpTime: getSelectedTime,
+          completion: clientDetails.completion,
           action: "create",
         },
         {
@@ -727,6 +774,8 @@ const SearchPincode = () => {
           verifiedBy: clientDetails.verifiedBy,
           database: "client_db",
           tracker: clientDetails.tracker,
+          completion: clientDetails.completion,
+          label: clientDetails.label,
           amountDetails: clientDetails.amountDetails,
           amountHistory: updatedHistory,
           followUpTime: getSelectedTime,
@@ -739,7 +788,6 @@ const SearchPincode = () => {
       );
       console.log("Client Save Succressfully", result.data.result);
 
-      setRefresh((prev) => !prev);
       if (result && resultHistory) {
         alert("Client successfully Saved");
       }
@@ -747,8 +795,9 @@ const SearchPincode = () => {
       setIsUnsavedNewForm(false);
       setRefreshHistory((prev) => !prev);
       setIsNewDataEntry(false);
-      console.log("FINAL tracker being sent:", clientDetails.tracker);
-      window.location.reload();
+      // console.log("FINAL tracker being sent:", clientDetails.tracker);
+      // window.location.reload();
+      setRefresh((prev) => !prev);
     } catch (err) {
       console.log("internal err", err);
       if (err) {
@@ -759,7 +808,14 @@ const SearchPincode = () => {
   // console.log("yo",selectedUserProduct)
 
   const handleUpdateClientDetails = async () => {
-    console.log("tracker", clientDetails.tracker);
+    console.log("tracker fgffd", clientDetails.tracker);
+
+    if (!clientDetails.bussinessNames[0]?.value) {
+      return alert("First business name cannot be Empty");
+    }
+    if (!clientDetails.numbers[0]?.value) {
+      return alert("First Mobile Field cannot be Empty");
+    }
     try {
       clientDetails.tracker.no_of_new_calls_db = {
         completed: true,
@@ -809,8 +865,8 @@ const SearchPincode = () => {
             district: clientDetails.district,
             state: clientDetails.state,
             country: clientDetails.country,
-            assignBy: taskDetails.assignBy_db || "NA",
-            assignTo: taskDetails.assignTo_db || userLoginId,
+            assignBy: taskDetails?.assignBy_db || "NA",
+            assignTo: taskDetails?.assignTo_db || userLoginId,
             product: selectedUserProduct.map((prod) => ({
               label: prod.label,
               value: prod.value,
@@ -825,7 +881,9 @@ const SearchPincode = () => {
             followUpDate: clientDetails.followUpDate,
             verifiedBy: clientDetails.verifiedBy,
             database: "client_db",
+            label: clientDetails.label,
             tracker: clientDetails.tracker,
+            completion: clientDetails.completion,
             followUpTime: getSelectedTime,
             action: "update",
           }
@@ -849,8 +907,8 @@ const SearchPincode = () => {
           district: clientDetails.district,
           state: clientDetails.state,
           country: clientDetails.country,
-          assignBy: taskDetails.assignBy_db || "NA",
-          assignTo: taskDetails.assignTo_db || userLoginId,
+          assignBy: taskDetails?.assignBy_db || "NA",
+          assignTo: taskDetails?.assignTo_db || userLoginId,
           product: selectedUserProduct.map((prod) => ({
             label: prod.label,
             value: prod.value,
@@ -866,7 +924,9 @@ const SearchPincode = () => {
           followUpDate: clientDetails.followUpDate,
           verifiedBy: clientDetails.verifiedBy,
           database: "client_db",
+          label: clientDetails.label,
           tracker: clientDetails.tracker,
+          completion: clientDetails.completion,
           amountDetails: clientDetails.amountDetails,
           amountHistory: updatedHistory,
           followUpTime: getSelectedTime,
@@ -880,6 +940,7 @@ const SearchPincode = () => {
         alert("Installation Done User successfully Updated");
       }
       setRefreshHistory((prev) => !prev);
+      setRefresh((prev) => !prev);
     } catch (err) {
       console.log("internal error", err);
     }
@@ -896,6 +957,7 @@ const SearchPincode = () => {
         setTaskIndex(newIndex);
         setCurrentClientCount(newIndex + 1);
         setCurrentClientId(taskClientIdArray[newIndex]);
+
         console.log("nextcount", newIndex + 1);
 
         // console.log("next taskClientIdArray Id", taskClientIdArray[newIndex]);
@@ -921,6 +983,8 @@ const SearchPincode = () => {
       console.log("lastClient save in localstorage", currentClientId);
     }
     setIsUnsavedNewForm(false);
+    handleTimeChange("HH:MM:SS AM/PM");
+    handleNewTimeChange("HH:MM:SS AM/PM");
   };
 
   //POINTER TO MOVE PREVIOUSz
@@ -951,6 +1015,7 @@ const SearchPincode = () => {
     }
 
     setIsUnsavedNewForm(false);
+    handleTimeChange("HH:MM:SS AM/PM");
   };
 
   //CREATE NEW FORM FOR CLIENT DB
@@ -985,6 +1050,7 @@ const SearchPincode = () => {
         remarks: "",
         callType: "",
         verifiedBy: "",
+        label: "",
         tracker: {
           new_data_db: { completed: false, completedDate: "" },
           leads_db: { completed: false, completedDate: "" },
@@ -1015,6 +1081,14 @@ const SearchPincode = () => {
           extraCharges: 0,
           finalCost: 0,
           newAmount: 0,
+        },
+        label: "",
+        completion: {
+          receivedProduct: "",
+          status: "",
+          newExpectedDate: "",
+          newTime: "",
+          newRemark: "",
         },
         amountHistory: [],
       });
@@ -1050,25 +1124,13 @@ const SearchPincode = () => {
     setGetSelectedTime(time);
     // console.log("Selected Time:", time);
   };
-
-  // const handleTrackerChange = (trackerName, value) => {
-  //   console.log(trackerName, "-->", value);
-  //   setClientDetails((prev) => ({
-  //     ...prev,
-  //     tracker: {
-  //       [trackerName]: {
-  //         completed: value,
-  //         completedDate: value ? new Date().toLocaleDateString("en-GB") : "",
-  //       },
-  //     },
-  //   }));
-  // };
-
-  // const resetAllTrackers = () => ({
-  //   follow_up: { completed: false, completedDate: "" },
-  //   installation_db: { completed: false, completedDate: "" },
-  //   training_db: { completed: false, completedDate: "" },
-  // });
+  const handleNewTimeChange = (time) => {
+    if (time === "HH:MM:SS AM/PM") {
+      time = "NA";
+    }
+    setGetSelectedNewTime(time);
+    // console.log("Selected Time:", time);
+  };
 
   const handleStageChange = (selectedOptions) => {
     console.log("Full Selected Objects:", selectedOptions);
@@ -1220,6 +1282,73 @@ const SearchPincode = () => {
     return { totalAmount, paidAmount, balanceAmount };
   };
 
+  const handleNewVisit = () => {
+    setSelectedUserProduct([]);
+    setSelectedStageOptions([]);
+    handleTimeChange("HH:MM:SS AM/PM");
+    setCheckInstallation(false);
+    setClientDetails((prev) => ({
+      ...prev,
+      followUpTime: "",
+      expectedDate: "",
+      remarks: "",
+      callType: "",
+      quotationShare: "",
+      label: "",
+      completion: {
+        receivedProduct: "",
+        status: "",
+        newExpectedDate: "",
+        newTime: "",
+        newRemark: "",
+      },
+      tracker: {
+        new_data_db: { completed: false, completedDate: "" },
+        leads_db: { completed: false, completedDate: "" },
+        training_db: { completed: false, completedDate: "" },
+        follow_up_db: { completed: false, completedDate: "" },
+        installation_db: { completed: false, completedDate: "" },
+        demo_db: { completed: false, completedDate: "" },
+        recovery_db: {
+          completed: false,
+          completedDate: "",
+          recoveryHistory: [],
+        },
+        target_db: { completed: false, completedDate: "" },
+        no_of_new_calls_db: { completed: false, completedDate: "" },
+        support_db: { completed: false, completedDate: "" },
+        out_bound_db: { completed: false, completedDate: "" },
+        in_bound_db: { completed: false, completedDate: "" },
+        hot_db: { completed: false, completedDate: "" },
+        lost_db: { completed: false, completedDate: "" },
+        create_db: { completed: false, completedDate: "" },
+        update_db: { completed: false, completedDate: "" },
+        deactivate_db: { completed: false, completedDate: "" },
+      },
+      amountDetails: {
+        totalAmount: "",
+        paidAmount: "",
+        extraCharges: "",
+        finalCost: "",
+        newAmount: "",
+        balanceAmount: "",
+      },
+      amountHistory: [
+        {
+          date: "",
+          time: "",
+          totalAmount: "",
+          paidAmount: "",
+          extraCharges: "",
+          finalCost: "",
+          newAmount: "",
+          balanceAmount: "",
+          updatedBy: "",
+        },
+      ],
+    }));
+  };
+
   return (
     <>
       <div className={styles.main}>
@@ -1288,6 +1417,7 @@ const SearchPincode = () => {
               </h2>
               {checkHotClient && (
                 <FaUserClock
+                  title="Hot Client"
                   style={{
                     fontSize: "40px",
                     color: "black",
@@ -1317,6 +1447,7 @@ const SearchPincode = () => {
                   style={{ display: "flex", gap: "10px", alignItems: "center" }}
                 >
                   <BsDatabaseFillDown
+                    title="Raw DB"
                     style={{
                       color: "red",
                       backgroundColor: "white",
@@ -1379,6 +1510,7 @@ const SearchPincode = () => {
                     </span>
                   )}
                   <BsDatabaseFillDown
+                    title="Client DB"
                     style={{
                       color: "blue",
                       backgroundColor: "white",
@@ -1464,7 +1596,7 @@ const SearchPincode = () => {
             <div className={styles["formlayout-up"]}>
               <AddField
                 fieldType={"text"}
-                initialLabel={"Bussiness Name"}
+                initialLabel={"Bussiness Name *"}
                 initialFields={clientDetails.bussinessNames}
                 onChange={(values) => {
                   console.log("Bussiness name values", values);
@@ -1477,7 +1609,7 @@ const SearchPincode = () => {
               />
               <AddField
                 fieldType={"number"}
-                initialLabel={"Primary Number"}
+                initialLabel={"Primary Number *"}
                 initialFields={clientDetails.numbers}
                 onChange={(values) => {
                   console.log("numbers", values);
@@ -1626,7 +1758,26 @@ const SearchPincode = () => {
                 </div>
               </div>
             </div>
+            {/* =========================FEEDBACK================================ */}
             <div className={styles.feedback}>
+              <div className={styles.scheduleTab}>
+                <p
+                  onClick={() => {
+                    setStageTab("Planner");
+                  }}
+                  className={stageTab === "Planner" && styles.scheduleTab1}
+                >
+                  Planner
+                </p>
+                <p
+                  onClick={() => {
+                    setStageTab("Completion");
+                  }}
+                  className={stageTab === "Completion" && styles.scheduleTab1}
+                >
+                  Completion
+                </p>
+              </div>
               <h2 style={{ fontSize: "18px" }}>Feedback </h2>
               <FaFileSignature
                 style={{
@@ -1635,8 +1786,17 @@ const SearchPincode = () => {
                   padding: "2px",
                 }}
               />
+              <div style={{ position: "absolute", right: "10px" }}>
+                <button onClick={handleNewVisit}>New Visit</button>
+              </div>
             </div>
-            <div className={styles["formlayout-down"]}>
+
+            {/* ================================= PLANNER ============================================================= */}
+
+            <div
+              style={{ display: stageTab === "Planner" ? "" : "none" }}
+              className={styles["formlayout-down"]}
+            >
               <div
                 style={{
                   width: "100%",
@@ -1767,7 +1927,10 @@ const SearchPincode = () => {
                   >
                     Follow Up Time
                   </label>
-                  <TimePickerComponent onTimeChange={handleTimeChange} />
+                  <TimePickerComponent
+                    value={getSelectedTime}
+                    onTimeChange={handleTimeChange}
+                  />
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1862,6 +2025,30 @@ const SearchPincode = () => {
                       <option value="In-bound">In-bound</option>
                     </select>
                   </div>
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "5px",
+                    }}
+                  >
+                    Label
+                    <select
+                      name=""
+                      id=""
+                      style={{ padding: "2px 10px", width: "60%" }}
+                      value={clientDetails.label}
+                      onChange={(e) => {
+                        handleSearchInput("label", e.target.value);
+                      }}
+                    >
+                      <option value="">NA</option>
+                      <option value="Hot">Hot</option>
+                      <option value="Interested">Interested</option>
+                      <option value="Less Interested">Less Interested</option>
+                    </select>
+                  </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <label htmlFor="">Remark</label>
@@ -1937,6 +2124,186 @@ const SearchPincode = () => {
                 <div></div>
               )}
             </div>
+
+            {/* =================================== COMPLETION ========================================================             */}
+
+            <div
+              style={{ display: stageTab === "Completion" ? "" : "none" }}
+              className={styles["formlayout-down"]}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  gap: "5px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "5px",
+                  }}
+                >
+                  Product
+                  <input
+                    type="text"
+                    name=""
+                    id=""
+                    style={{ padding: "2px 10px", width: "60%" }}
+                    value={clientDetails.completion.receivedProduct}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "2px",
+                      marginBottom: "5px",
+                    }}
+                  >
+                    Stage
+                    <select
+                      name=""
+                      id=""
+                      style={{ padding: "2px 10px", width: "60%" }}
+                      value={clientDetails.completion.newStage}
+                      onChange={(e)=>{setClientDetails((prev)=>({
+                        ...prev,
+                        completion:{
+                          ...prev.completion,
+                          newStage:e.target.value,
+                        }
+                      }))}}
+                    >
+                      <option value="">--Select--</option>
+                      <option value="Demo">Demo</option>
+                      <option value="FollowUp">FollowUp</option>
+                      <option value="Installation">Installation</option>
+                      <option value="Hot">Hot</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  // background: "red",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  Expected Close Date
+                  <input
+                    type="date"
+                    name=""
+                    id=""
+                    style={{ padding: "0px 10px", width: "30%" }}
+                    value={clientDetails.completion.newExpectedDate}
+                    onChange={(e) => {
+                      setClientDetails((prev) => ({
+                        ...prev,
+                        completion: {
+                          ...prev.completion,
+                          newExpectedDate: e.target.value,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
+                <div style={{ position: "absolute", top: "0px", right: "10%" }}>
+                  <label
+                    htmlFor=""
+                    style={{ fontSize: "16px", fontWeight: "500" }}
+                  >
+                    Follow Up Time
+                  </label>
+                  <TimePickerComponent
+                    value={getSelectedNewTime}
+                    onTimeChange={handleNewTimeChange}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    gap: "5px",
+                  }}
+                ></div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label htmlFor="">Remark</label>
+                  <textarea
+                    className={styles["remarks-field"]}
+                    value={clientDetails.completion.newRemark}
+                    onChange={(e) => {
+                      setClientDetails((prev) => ({
+                        ...prev,
+                        completion: {
+                          ...prev.completion,
+                          newRemark: e.target.value,
+                        },
+                      }));
+                    }}
+                  ></textarea>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  marginBottom: "5px",
+                }}
+              >
+                Status
+                <select
+                  name=""
+                  id=""
+                  style={{ padding: "2px 10px", width: "30%" }}
+                  value={clientDetails.completion.status}
+                  onChange={(e) => {
+                    setClientDetails((prev) => ({
+                      ...prev,
+                      completion: {
+                        ...prev.completion,
+                        status: e.target.value,
+                      },
+                    }));
+                  }}
+                >
+                  <option value="">--Select--</option>
+                  <option value="Done">Done</option>
+                  <option value="Postponed">Postponed</option>
+                  <option value="Cancel">Cancel</option>
+                </select>
+              </div>
+            </div>
+
             <div className={styles.btn}>
               <div
                 className={styles["arrow-icon"]}
@@ -2076,799 +2443,6 @@ const SearchPincode = () => {
           />
         </div>
       </div>
-
-      {/* ======================================================================== */}
-
-      {/* <div className="pincode-main">
-        <div className="pincode-content">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "end",
-              position: "relative",
-            }}
-          >
-            {checkHotClient && (
-              <FaUserClock
-                style={{
-                  fontSize: "40px",
-                  color: "white",
-                  position: "absolute",
-                }}
-              />
-            )}
-          </div>
-          <div className="user-details-heading-div">
-            <div className="">
-              Sr No{" "}
-              <input
-                type="text"
-                name=""
-                id=""
-                style={{ width: "30%", textAlign: "center" }}
-                value={clientDetails.sr_no}
-              />
-              <input
-                type="text"
-                name=""
-                id=""
-                // readOnly
-                value={clientDetails.clientId}
-                onChange={(e) => {
-                  handleSearchInput("clientId", e.target.value);
-                }}
-                style={{ width: "40%", textAlign: "center" }}
-              />{" "}
-            </div>
-            <div id="heading" style={{ fontSize: "18px" }}>
-              Client Details
-            </div>
-            <div className="u">
-              {databaseStatus === "raw_db" ? (
-                <span
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                >
-                  <BsDatabaseFillDown
-                    style={{
-                      color: "red",
-                      backgroundColor: "white",
-                      fontSize: "18px",
-                      borderRadius: "5px",
-                    }}
-                  />
-                </span>
-              ) : databaseStatus === "client_db" ? (
-                <span
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                >
-                  {verifiedByEmployee ? (
-                    <span>
-                      {" "}
-                      Verified by {verifiedByEmployee}
-                      <BsShieldCheck
-                        style={{
-                          color: "green",
-                          backgroundColor: "white",
-                          fontSize: "18px",
-                          borderRadius: "20px",
-                        }}
-                      />
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        alignItems: "center",
-                      }}
-                    >
-                      {" "}
-                      Verified
-                      <BsShieldX
-                        style={{
-                          color: "red",
-                          backgroundColor: "white",
-                          fontSize: "18px",
-                          borderRadius: "20px",
-                        }}
-                      />{" "}
-                    </span>
-                  )}
-                  <BsDatabaseFillDown
-                    style={{
-                      color: "blue",
-                      backgroundColor: "white",
-                      fontSize: "18px",
-                      borderRadius: "5px",
-                    }}
-                  />
-                </span>
-              ) : (
-                <span
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                >
-                  {" "}
-                  Verified
-                  <BsShieldX
-                    style={{
-                      color: "red",
-                      backgroundColor: "white",
-                      fontSize: "18px",
-                      borderRadius: "20px",
-                    }}
-                  />{" "}
-                </span>
-              )}
-              <span>
-                Follow Up Date {clientDetails.time}
-                <input
-                  type="date"
-                  name=""
-                  id=""
-                  className="pincode-input"
-                  value={clientDetails.followUpDate}
-                  onChange={(e) => {
-                    handleSearchInput("followUpDate", e.target.value);
-                  }}
-                />
-              </span>
-            </div>
-          </div>
-          <div className="user-details-content">
-            <div className="user-details">
-              <div className="add-field-class" style={{ width: "100%" }}>
-                <AddField
-                  fieldType={"text"}
-                  initialLabel={"Business Name"}
-                  initialFields={clientDetails.bussinessNames}
-                  onChange={(values) => {
-                    console.log("Bussiness name values", values);
-                    const businessNames = values;
-                    setClientDetails((prev) => ({
-                      ...prev,
-                      bussinessNames: businessNames,
-                    }));
-                  }}
-                />
-              </div>
-              <div>
-                Client Name
-                <input
-                  type="text"
-                  name=""
-                  id=""
-                  className="pincode-input"
-                  value={clientDetails.clientName}
-                  onChange={(e) => {
-                    handleSearchInput("clientName", e.target.value);
-                  }}
-                />
-              </div>
-              <div className="add-field-class" style={{ width: "100%" }}>
-                <AddField
-                  fieldType="number"
-                  initialLabel="Primary Number"
-                  initialFields={clientDetails.numbers}
-                  onChange={(values) => {
-                    console.log("numbers", values);
-                    const numbers = values;
-                    setClientDetails((prev) => ({
-                      ...prev,
-                      numbers: numbers,
-                    }));
-                  }}
-                />
-              </div>
-
-              <div className="add-field-class" style={{ width: "100%" }}>
-                <AddField
-                  fieldType={"email"}
-                  initialLabel={"Email 1"}
-                  initialFields={clientDetails.emails}
-                  onChange={(values) => {
-                    const email = values;
-                    console.log("email", email);
-                    setClientDetails((prev) => ({
-                      ...prev,
-                      emails: email,
-                    }));
-                  }}
-                />
-              </div>
-              <div>
-                Website
-                <input
-                  type="text"
-                  name=""
-                  id=""
-                  className="pincode-input"
-                  value={clientDetails.website}
-                  onChange={(e) => {
-                    handleSearchInput("website", e.target.value);
-                  }}
-                />
-              </div>
-              <div className="add-field-class" style={{ width: "100%" }}>
-                <AddField
-                  fieldType={"text"}
-                  initialLabel={"Address 1"}
-                  initialFields={clientDetails.addresses}
-                  onChange={(values) => {
-                    const addresses = values;
-                    console.log("address", addresses);
-                    setClientDetails((prev) => ({
-                      ...prev,
-                      addresses: addresses,
-                    }));
-                  }}
-                />
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  margin: "0px",
-                  padding: "0px",
-                  width: "100%",
-                  gap: "0px",
-                }}
-              >
-                <div>
-                  Pincode
-                  <input
-                    type="number"
-                    name=""
-                    id=""
-                    className="pincode-input"
-                    value={clientDetails.pincode}
-                    onChange={(e) => {
-                      handleSearchInput("pincode", e.target.value);
-                    }}
-                  />
-                </div>
-                <div>
-                  District
-                  <select
-                    name=""
-                    id=""
-                    className="selects"
-                    value={clientDetails.district}
-                    onChange={(e) => {
-                      handleSearchInput("district", e.target.value);
-                      // setDistrictOptions(e.target.value)
-                      console.log("selected district", e.target.value);
-                    }}
-                  >
-                    <option value="">Select district</option>
-                    {districtOptions.map((todo, idx) => (
-                      <option name={todo} key={idx} value={todo}>
-                        {todo}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div
-                className="add-field-class"
-                style={{
-                  display: "flex",
-                  margin: "0px",
-                  padding: "0px",
-                  width: "100%",
-                  gap: "0px",
-                  borderBottom: "1px dotted gray",
-                  paddingBottom: "5px",
-                }}
-              >
-                <div>
-                  State
-                  <select
-                    className="selects"
-                    name=""
-                    id=""
-                    value={
-                      clientDetails.state !== ""
-                        ? clientDetails.state
-                        : stateOptions
-                    }
-                    onChange={(e) => {
-                      setClientDetails((prev) => ({
-                        ...prev,
-                        state: e.target.value,
-                      }));
-                      // console.log("state",e.target.value)
-                    }}
-                  >
-                    <option value="">Select State</option>
-                    {stateOptions.map((todo, idx) => (
-                      <>
-                        <option name={todo} key={idx} value={todo}>
-                          {todo}
-                        </option>
-                      </>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  Country
-                  <select
-                    className="selects"
-                    name=""
-                    id=""
-                    value={
-                      clientDetails.country !== ""
-                        ? clientDetails.country
-                        : countryOptions
-                    }
-                    onChange={(e) => {
-                      setClientDetails((prev) => ({
-                        ...prev,
-                        state: e.target.value,
-                      }));
-                      // console.log("state",e.target.value)
-                    }}
-                  >
-                    <option value="">Select Country</option>
-                    {countryOptions.map((todo, idx) => (
-                      <>
-                        <option name={todo} key={idx} value={todo}>
-                          {todo}
-                        </option>
-                      </>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "40px",
-                }}
-              >
-                <h2
-                  style={{
-                    fontSize: "18px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "40px",
-                  }}
-                >
-                  Feedback{" "}
-                  <FaFlag
-                    style={{
-                      fontSize: "36px",
-                      color: feedback ? "lightgray" : "red",
-                    }}
-                  />
-                </h2>
-              </div>
-              <div
-                className="add-field-class"
-                style={{
-                  display: "flex",
-                  margin: "0px",
-                  padding: "0px",
-                  width: "100%",
-                  gap: "0px",
-                  borderBottom: "1px dotted gray",
-                  paddingBottom: "5px",
-                }}
-              >
-                <div className="assign-div" style={{ width: "40%" }}>
-                  <span
-                    style={{
-                      width: "50%",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    Assign By
-                    <input
-                      name=""
-                      id=""
-                      className="selects"
-                      readOnly
-                      value={taskDetails.assignBy_db || "NA"}
-                    />
-                  </span>
-                  <span
-                    style={{
-                      width: "50%",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    Assign To
-                    <input
-                      name=""
-                      id=""
-                      className="selects"
-                      readOnly
-                      value={taskDetails.assignTo_db || userLoginId}
-                    />
-                  </span>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  margin: "0px",
-                  padding: "0px",
-                  width: "100%",
-                }}
-              >
-                <div>
-                  Product
-                  {/* <select
-                    name=""
-                    id=""
-                    className="selects"
-                    value={clientDetails.product}
-                    onChange={(e) => {
-                      handleSearchInput("product", e.target.value);
-                    }}
-                  >
-                    <option value="">--select product--</option>
-                    {userProductList.map((list, idx) => (
-                      <option value={list}>{list}</option>
-                    ))}
-                  </select> 
-                </div>
-                <div>
-                  Stage
-                  <select
-                    name=""
-                    id=""
-                    className="selects"
-                    value={clientDetails.stage}
-                    onChange={(e) => {
-                      handleSearchInput("stage", e.target.value);
-                      const selectedStage = e.target.value;
-                      if (selectedStage === "follow up") {
-                        handleTrackerChange("follow_up", true);
-                      } else if (selectedStage === "installation") {
-                        handleTrackerChange("installation_db", true);
-                      } else if (selectedStage === "demo") {
-                        handleTrackerChange("demo_db", true);
-                      } else if (selectedStage === "recovery") {
-                        handleTrackerChange("recovery_db", true);
-                      } else if (selectedStage === "hot") {
-                        handleTrackerChange("hot_db", true);
-                      } else if (selectedStage === "lost") {
-                        handleTrackerChange("lost_db", true);
-                      }
-                    }}
-                  >
-                    <option value="">--select product--</option>
-                    <option value="follow up">Follow Up</option>
-                    <option value="demo">Demo</option>
-                    <option value="due amount">Due Amount</option>
-                    <option value="recovery">Recovery</option>
-                    <option value="installation">Installation</option>
-                    <option value="hot">Hot</option>
-                    <option value="lost">Lost</option>
-                  </select>
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  margin: "0px",
-                  padding: "0px",
-                  width: "100%",
-                  gap: "0px",
-                }}
-              >
-                <div className="quotation-class">
-                  Quotation Share {"  "} (
-                  <span>
-                    <label htmlFor="yes">Yes </label>
-                    <input
-                      type="radio"
-                      name="quotation"
-                      id="yes"
-                      value="yes"
-                      checked={quotationYesNo === true}
-                      style={{ marginRight: "5px" }}
-                      onChange={() => {
-                        setQuotationYesNo(true);
-                      }}
-                    />
-                    <label htmlFor="no">No </label>
-                    <input
-                      type="radio"
-                      name="quotation"
-                      id="no"
-                      value="no"
-                      checked={quotationYesNo === false}
-                      onChange={() => {
-                        setQuotationYesNo(false);
-                        handleSearchInput("quotationShare", "");
-                      }}
-                    />
-                  </span>
-                  )
-                  {quotationYesNo && (
-                    <input
-                      type="text"
-                      name=""
-                      id=""
-                      className="pincode-input"
-                      value={clientDetails.quotationShare}
-                      onChange={(e) => {
-                        handleSearchInput("quotationShare", e.target.value);
-                      }}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  Expected Close Date
-                  <input
-                    type="date"
-                    name=""
-                    id=""
-                    className="pincode-input"
-                    value={clientDetails.expectedDate}
-                    onChange={(e) => {
-                      handleSearchInput("expectedDate", e.target.value);
-                      setClientDetails((prev) => ({
-                        ...prev,
-                        tracker: {
-                          ...prev.tracker,
-                          leads_db: {
-                            completed: true,
-                            completedDate: new Date().toLocaleDateString(
-                              "en-GB"
-                            ),
-                          },
-                        },
-                      }));
-                    }}
-                  />
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  margin: "0px",
-                  padding: "0px",
-                  width: "100%",
-                }}
-              >
-                <div>
-                  Remark
-                  <textarea
-                    className="remarks-field"
-                    value={clientDetails.remarks}
-                    onChange={(e) => {
-                      handleSearchInput("remarks", e.target.value);
-                    }}
-                  ></textarea>
-                </div>
-                <div>
-                  Call Type
-                  <select
-                    name=""
-                    id=""
-                    className="selects"
-                    value={clientDetails.callType}
-                    onChange={(e) => {
-                      const selectCallType = e.target.value;
-                      if (selectCallType === "Out-bound") {
-                        setClientDetails((prev) => ({
-                          ...prev,
-                          tracker: {
-                            ...prev.tracker,
-                            out_bound_db: {
-                              completed: true,
-                              completedDate: new Date().toLocaleDateString(
-                                "en-GB"
-                              ),
-                            },
-                          },
-                        }));
-                      } else if (selectCallType === "In-bound") {
-                        setClientDetails((prev) => ({
-                          ...prev,
-                          tracker: {
-                            ...prev.tracker,
-                            in_bound_db: {
-                              completed: true,
-                              completedDate: new Date().toLocaleDateString(
-                                "en-GB"
-                              ),
-                            },
-                          },
-                        }));
-                      }
-                      handleSearchInput("callType", e.target.value);
-                    }}
-                  >
-                    <option value="Out-bound">Out-bound</option>
-                    <option value="In-bound">In-bound</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="client-btn">
-              <TimePickerComponent onTimeChange={handleTimeChange} />
-            </div>
-            <div style={{ width: "60%" }}>
-              Stage
-              <CustomSelect
-                options={stageOptions}
-                value={selectedStageOptions}
-                onChange={(selected) => {
-                  handleStageChange(selected);
-                }}
-                isMulti={true}
-              />
-              {checkInstallation && (
-                <span style={{ display: "flex" }}>
-                  Total Amount:{" "}
-                  <input
-                    type="text"
-                    value={clientDetails.totalAmount}
-                    onChange={(e) => {
-                      setClientDetails((prev) => ({
-                        ...prev,
-                        totalAmount: e.target.value,
-                      }));
-                    }}
-                  />
-                  Recovery :{" "}
-                  <input
-                    type="text"
-                    value={clientDetails.paidAmount}
-                    onChange={(e) => {
-                      setClientDetails((prev) => ({
-                        ...prev,
-                        paidAmount: e.target.value,
-                      }));
-                    }}
-                  />
-                </span>
-              )}
-            </div>
-            <div className="client-btn">
-              <div
-                className="arrow-icon"
-                style={{
-                  position: "relative",
-                  backgroundColor:
-                    currentClientCount - 1 === 0 ? "lightgray" : "",
-                }}
-                onClick={handlePrevClientDetails}
-              >
-                {isTaskMode && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "0",
-                      left: "0",
-                      width: "15px",
-                      height: "15px",
-                      background: "red",
-                      borderRadius: "100%",
-                      fontSize: "12px",
-                      color: "white",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {currentClientCount - 1}
-                  </span>
-                )}
-                <FaAngleLeft />
-              </div>
-              <div
-                style={{
-                  width: "25px",
-                  height: "25px",
-                  backgroundColor: "rgb(92, 55, 55)",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderRadius: "100%",
-                  fontSize: "140px",
-                }}
-                onClick={() => {
-                  handleSwichTo();
-                }}
-              >
-                <HiOutlineRefresh
-                  style={{ fontSize: "40px", color: "white" }}
-                />
-              </div>
-              <button
-                disabled={!checkPermissionManagement.create_P}
-                onClick={() => {
-                  handleClientNewForm();
-                }}
-              >
-                New
-              </button>
-              {!isClientIdAvailableInDb && (
-                <button onClick={handleSaveClientDetails}>Save</button>
-              )}
-              {isClientIdAvailableInDb && (
-                <button
-                  onClick={handleUpdateClientDetails}
-                  disabled={!checkPermissionManagement.update_P}
-                >
-                  Update
-                </button>
-              )}
-              <button disabled={!checkPermissionManagement.download_P}>
-                Download
-              </button>
-              <button disabled={!checkPermissionManagement.view_P}>View</button>
-              <button disabled={!checkPermissionManagement.uploadFile_P}>
-                Upload
-              </button>
-              <button
-                onClick={() => {
-                  handleAllSearchClientData();
-                  setCheckDisplaySearchClients((prev) => !prev);
-                }}
-              >
-                Search
-              </button>
-              {checkDisplaySearchClients && (
-                <DisplaySearchClientsPortal
-                  onClientIdClick={handleClientIdClick}
-                  onAllSearchClientData={allSearchClientData}
-                  onClose={() => {
-                    setCheckDisplaySearchClients(false);
-                  }}
-                />
-              )}
-              <div
-                className="arrow-icon"
-                onClick={handleNextClientDetails}
-                style={{
-                  position: "relative",
-                  backgroundColor:
-                    currentClientCount === clientCount ? "lightgray" : "",
-                }}
-              >
-                <FaAngleRight />
-                {isTaskMode && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "0",
-                      right: "0",
-                      width: "15px",
-                      height: "15px",
-                      background: "red",
-                      borderRadius: "100%",
-                      fontSize: "12px",
-                      color: "white",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {" "}
-                    {clientCount - currentClientCount}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div>
-            <History onCurrentClientId={currentClientId} />
-          </div>
-        </div>
-      </div> */}
     </>
   );
 };
