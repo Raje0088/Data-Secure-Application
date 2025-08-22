@@ -112,7 +112,7 @@ const SuperAdminDashboard = () => {
   useEffect(() => {
     const fetchUser = async () => {
       const userDetails = await axios.get(
-        "http://localhost:3000/users/getUser"
+        `${base_url}/users/getUser`
       );
       const users = userDetails.data.usersdf;
       const usersId = users
@@ -143,7 +143,7 @@ const SuperAdminDashboard = () => {
   const assignTaskTo = async () => {
     try {
       const result = await axios.post(
-        "http://localhost:3000/task/task-assign",
+        `${base_url}/task/task-assign`,
         {
           assignBy: userLoginId,
           assignTo: filteredBy.member,

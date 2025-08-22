@@ -22,14 +22,14 @@ const GenerateClientSerialNumber = async (req, res) => {
 }
 const createClient = async (req, res) => {
     try {
-        console.log("req body", req.body)
         const { clientSerialNo, clientId, userId, bussinessNames, clientName,
             numbers, emails, website,
             addresses, pincode, district,
             state, assignBy, assignTo,
-            product, stage, quotationShare,
+            product, stage, quotationShare,database,
             expectedDate, remarks, label,completion,
-            followUpDate, verifiedBy, tracker, amountDetails, amountHistory, action, followUpTime } = req.body;
+            followUpDate, verifiedBy, tracker, amountDetails, action, followUpTime } = req.body;
+            console.log("req body", amountDetails)
 
         const bussiness1 = bussinessNames[0]?.value || "";
         const bussiness2 = bussinessNames[1]?.value || "";
@@ -99,12 +99,11 @@ const createClient = async (req, res) => {
             time_db: followUpTime,
             date_db: new Date().toLocaleDateString('en-GB'),
             action_db: action,
-            database_status_db: "client_db",
+            database_status_db: database || "client_db",
             tracking_db: tracker,
             label_db: label,
             completion_db: completion,
             amountDetails_db: amountDetails,
-            amountHistory_db: amountHistory,
         })
         console.log("Client Details save Successfully", result)
         res.status(201).json({ message: "Client Details save Successfully", result })
@@ -127,9 +126,9 @@ const updateClient = async (req, res) => {
             numbers, emails, website,
             addresses, pincode, district,
             state, assignBy, assignTo,
-            product, stage, quotationShare,
+            product, stage, quotationShare, database,
             expectedDate, remarks, label, completion,
-            followUpDate, verifiedBy, tracker, amountDetails, amountHistory, action, followUpTime } = req.body;
+            followUpDate, verifiedBy, tracker, amountDetails, action, followUpTime } = req.body;
 
         // Check if installation was not previously completed
         const wasInstallationDone = oldClient.tracking_db?.installation_db?.completed;
@@ -214,7 +213,7 @@ const updateClient = async (req, res) => {
                     time_db: followUpTime,
                     date_db: new Date().toLocaleDateString('en-GB'),
                     action_db: action,
-                    database_status_db: "client_db",
+                    database_status_db:database || "client_db",
                     label_db: label,
                     completion_db: completion,
                     tracking_db: {
@@ -224,7 +223,6 @@ const updateClient = async (req, res) => {
                         }
                     },
                     amountDetails_db: amountDetails,
-                    amountHistory_db: amountHistory,
                 }
             },
             { new: true }

@@ -4,6 +4,7 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 import { FaDownload } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
+import { base_url } from "../config/config";
 
 const ViewExcel = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const ViewExcel = () => {
   const handleExcelView = async () => {
     try {
       const result = await axios.get(
-        "http://localhost:3000/view-excel/get-viewexcel-user"
+        `${base_url}/view-excel/get-viewexcel-user`
       );
       const excelData = result.data.result;
       let filterData = [...excelData];
@@ -136,7 +137,7 @@ const ViewExcel = () => {
                 <td>{item.time_db}</td>
                 {/* <td>
                   <a
-                    href={`http://localhost:3000${item.excelURL_db}`}
+                    href={`${base_url}${item.excelURL_db}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

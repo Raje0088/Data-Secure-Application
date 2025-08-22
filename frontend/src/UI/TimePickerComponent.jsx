@@ -16,14 +16,13 @@ const TimePickerComponent = (props) => {
   const togglePicker = () => setShowPicker(!showPicker);
 
   useEffect(() => {
-    if (props.value) {
-      if (props.value === "NA") {
-        setTime({ hour: "", minute: "", second: "", period: "" });
-      } else {
-        const [timePart, period] = props.value.split(" ");
-        const [hour, minute, second] = timePart.split(":");
-        setTime({ hour, minute, second, period });
-      }
+    if (!props.value || props.value === "NA") {
+      // Reset picker to empty
+      setTime({ hour: "", minute: "", second: "", period: "" });
+    } else {
+      const [timePart, period] = props.value.split(" ");
+      const [hour, minute, second] = timePart.split(":");
+      setTime({ hour, minute, second, period });
     }
   }, [props.value]);
 
@@ -43,11 +42,9 @@ const TimePickerComponent = (props) => {
   const handleSelect = (type, value) => {
     setTime({ ...time, [type]: value });
   };
+
   const formatTime = () => {
     const { hour, minute, second, period } = time;
-    props.onTimeChange(
-      `${hour || "HH"}:${minute || "MM"}:${second || "SS"} ${period || "AM/PM"}`
-    );
     return `${hour || "HH"}:${minute || "MM"}:${second || "SS"} ${
       period || "AM/PM"
     }`;
@@ -55,7 +52,10 @@ const TimePickerComponent = (props) => {
 
   useEffect(() => {
     if (props.onTimeChange) {
-      props.onTimeChange(formatTime());
+      const formatted = formatTime();
+      if (formatted !== "HH:MM:SS AM/PM") {
+        props.onTimeChange(formatted);
+      }
     }
   }, [time]);
 

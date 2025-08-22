@@ -78,22 +78,13 @@ const clientHistorySchema = new mongoose.Schema({
         extraCharges: { type: Number, default: 0 },
         finalCost: { type: Number, default: 0 },
         newAmount: { type: Number, default: 0 },
-        balanceAmount: { type: Number, default: 0 }
+        balanceAmount: { type: Number, default: 0 },
+        gst: String,
+        referenceId: String,
+        mode: String,
     },
 
-    amountHistory_db: [
-        {
-            date: { type: String },           // Prefer storing as 'DD-MM-YYYY' if you're using string, or Date type.
-            time: { type: String },           // Example: 'HH:mm:ss'
-            totalAmount: { type: Number },
-            paidAmount: { type: Number },
-            extraCharges: { type: Number },
-            finalCost: { type: Number },
-            newAmount: { type: Number },
-            balanceAmount: { type: Number },
-            updatedBy: { type: String }        // store userId or name
-        }
-    ],
+
     assignBy: {
         type: String,
         ref: "UserModel"
@@ -109,6 +100,10 @@ const clientHistorySchema = new mongoose.Schema({
 clientHistorySchema.index({ isActive_db: 1 })
 clientHistorySchema.index({ assignTo: 1, optical_name1_db: 1, mobile_1_db: 1, email_1_db: 1, pincode_db: 1, address_1_db: 1 })
 clientHistorySchema.index({ date_db: 1 });
+clientHistorySchema.index({ expectedDate_db: 1 });
+clientHistorySchema.index({ "completion_db.newExpectedDate": 1 });
+clientHistorySchema.index({ "completion_db.status": 1 });
+
 
 
 const clientHistoryModel = mongoose.model("clientHistoryModel", clientHistorySchema)

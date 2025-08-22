@@ -77,34 +77,25 @@ const clientSchema = new mongoose.Schema({
         default: "client_db",
     },
     completion_db: {
-        receivedProduct:String,
-        status:String,
-        newExpectedDate:String,
-        newTime:String,
-        newRemark:String,
-        newStage:String,
+        receivedProduct: String,
+        status: String,
+        newExpectedDate: String,
+        newTime: String,
+        newRemark: String,
+        newStage: String,
     },
     amountDetails_db: {
-        totalAmount: { type: Number, default: 0 },
-        paidAmount: { type: Number, default: 0 },
-        extraCharges: { type: Number, default: 0 },
-        finalCost: { type: Number, default: 0 },
-        newAmount: { type: Number, default: 0 },
-        balanceAmount: { type: Number, default: 0 }
+        totalAmount: { type: Number, default: 0, set: v => v == null ? 0 : v },
+        paidAmount: { type: Number, default: 0, set: v => v == null ? 0 : v },
+        extraCharges: { type: Number, default: 0, set: v => v == null ? 0 : v },
+        finalCost: { type: Number, default: 0, set: v => v == null ? 0 : v },
+        newAmount: { type: Number, default: 0, set: v => v == null ? 0 : v },
+        balanceAmount: { type: Number, default: 0, set: v => v == null ? 0 : v },
+        gst: String,
+        referenceId: String,
+        mode: String,
     },
-    amountHistory_db: [
-        {
-            date: { type: String },           // Prefer storing as 'DD-MM-YYYY' if you're using string, or Date type.
-            time: { type: String },           // Example: 'HH:mm:ss'
-            totalAmount: { type: Number },
-            paidAmount: { type: Number },
-            extraCharges: { type: Number },
-            finalCost: { type: Number },
-            newAmount: { type: Number },
-            balanceAmount: { type: Number },
-            updatedBy: { type: String }    // store userId or name
-        }
-    ]
+
 
 }, { timestamps: true })
 

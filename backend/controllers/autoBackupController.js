@@ -6,6 +6,8 @@ const { exec } = require("child_process")
 const path = require("path")
 const nodemailer = require("nodemailer")
 const archiver = require("archiver")
+const dotenv = require("dotenv");
+dotenv.config();
 
 
 const creatAutoBackupEmails = async (req, res) => {
@@ -72,7 +74,7 @@ cron.schedule('03 18 * * *', async () => {
         const date = new Date()
         const backupDir = `D:/project/MongoBackUp/mongoDump-${date.toISOString().split("T")[0]}`;
 
-        const url = "mongodb+srv://transformtoday001:admin@raj.emaxz.mongodb.net/createTables"
+        const url = process.env.MONGODB_URL
         const cmd = `mongodump --uri="${url}" --out="${backupDir}"`
 
         exec(cmd, (error, stdout, stderr) => {

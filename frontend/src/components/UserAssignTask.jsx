@@ -3,6 +3,7 @@ import { IoMdAddCircleOutline } from "react-icons/io";
 import "./UserAssignTask.css";
 import axios from "axios";
 import TimepickerComponent from "../UI/TimePickerComponent";
+import { base_url } from "../config/config";
 
 const UserAssignTask = ({
   setAuto,
@@ -128,7 +129,7 @@ const UserAssignTask = ({
   const fetchId = async () => {
     try {
       const getUpdateFormId = await axios.get(
-        `http://localhost:3000/users/searchuser-task-form/${updateFormId}`
+        `${base_url}/users/searchuser-task-form/${updateFormId}`
       );
       // console.log("Fetched data:", getUpdateFormId.data.result);
 
@@ -214,7 +215,7 @@ const UserAssignTask = ({
   //   try {
   //     if (checkupdateIdPresent === updateFormId) {
   //       const result = await axios.put(
-  //         `http://localhost:3000/users/updateuser-task-form/${updateFormId}`,
+  //         `${base_url}/users/updateuser-task-form/${updateFormId}`,
   //         {
   //           assignTask: addTask,
   //           requestTask: addRequest,
@@ -225,7 +226,7 @@ const UserAssignTask = ({
   //       alert("user data update");
   //     } else {
   //       const result = await axios.post(
-  //         "http://localhost:3000/users/user-task-form",
+  //         "${base_url}/users/user-task-form",
   //         {
   //           assignTask: addTask,
   //           requestTask: addRequest,
@@ -255,7 +256,7 @@ const UserAssignTask = ({
 
     try {
       const result = await axios.post(
-        "http://localhost:3000/users/user-task-form",
+        `${base_url}/users/user-task-form`,
         {
           assignTask: addTask,
           requestTask: addRequest,

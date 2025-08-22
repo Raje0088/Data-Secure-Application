@@ -91,23 +91,11 @@ const clientSubscriptionSchema = new mongoose.Schema({
         extraCharges: { type: Number, default: 0 },
         finalCost: { type: Number, default: 0 },
         newAmount: { type: Number, default: 0 },
-        balanceAmount: { type: Number, default: 0 }
+        balanceAmount: { type: Number, default: 0 },
+        gst: String,
+        referenceId: String,
+        mode: String,
     },
-
-    amountHistory_db: [
-        {
-            date: { type: String },           // Prefer storing as 'DD-MM-YYYY' if you're using string, or Date type.
-            time: { type: String },           // Example: 'HH:mm:ss'
-            totalAmount: { type: Number },
-            paidAmount: { type: Number },
-            extraCharges: { type: Number },
-            finalCost: { type: Number },
-            newAmount: { type: Number },
-            balanceAmount: { type: Number },
-            updatedBy: { type: String }       // store userId or name
-        }
-    ]
-
 }, { timestamps: true })
 
 clientSubscriptionSchema.index({ isSubscriber_db: 1 })

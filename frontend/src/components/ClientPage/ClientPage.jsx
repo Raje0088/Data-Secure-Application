@@ -27,6 +27,7 @@ const SearchPincode = () => {
   const executiveId = state?.userId || "E02_SA";
   const [getSelectedTime, setGetSelectedTime] = useState("");
   const [taskDetails, setTaskDetails] = useState(null);
+  const [isUserDB, setIsUserDB] = useState(false);
 
   const [region, setRegion] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
@@ -94,26 +95,16 @@ const SearchPincode = () => {
       newStage: "",
     },
     amountDetails: {
-      totalAmount: "",
-      paidAmount: "",
-      extraCharges: "",
-      finalCost: "",
-      newAmount: "",
-      balanceAmount: "",
+      totalAmount: 0,
+      paidAmount: 0,
+      extraCharges: 0,
+      finalCost: 0,
+      newAmount: 0,
+      balanceAmount: 0,
+      gst: "",
+      referenceId: "",
+      mode: "",
     },
-    amountHistory: [
-      {
-        date: "",
-        time: "",
-        totalAmount: "",
-        paidAmount: "",
-        extraCharges: "",
-        finalCost: "",
-        newAmount: "",
-        balanceAmount: "",
-        updatedBy: "",
-      },
-    ],
   });
   const [stageOptions, setStageOptions] = useState([
     { label: "Demo", value: "demo_db" },
@@ -151,6 +142,26 @@ const SearchPincode = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
   const [isNewDataEntry, setIsNewDataEntry] = useState(false);
   const [stageTab, setStageTab] = useState("Planner");
+  const [selectNewStage, setSelectNewStage] = useState([]);
+  const [amountHandle, setAmountHandle] = useState({
+    prevTotal: 0,
+    prevExtra: 0,
+    prevFinal: 0,
+    prevNewAmount: 0,
+    prevPaid: 0,
+    prevBalance: 0,
+  });
+
+  const onlinePaymentMode = [
+    "CASH",
+    "DEBIT CARD",
+    "CREDIT CARD",
+    "NET BANKING",
+    "UPI",
+    "WALLET",
+    "CHEQUE",
+  ];
+  const [historyPop, setHistoryPop] = useState(false);
 
   //FETCHING ASSIGN TASK BY SA/ADMIN TO USER BY USING ARRAY TO
   // useEffect(() => {
@@ -199,6 +210,8 @@ const SearchPincode = () => {
       setTaskDetails(state?.selectedClients);
     } else if (state?.from === "remainder") {
       setTaskDetails([state?.id]);
+      setStageTab("Completion");
+      setSelectNewStage((state.stg || []).map((stage) => stage));
     } else {
       setTaskDetails(state?.taskdata ? [state.taskdata] : []);
     }
@@ -250,6 +263,7 @@ const SearchPincode = () => {
         // const nextId = `C${String(numId).padStart(7, "0")}`;
         // localStorage.setItem("lastClientId", nextId);
         const confirm = window.confirm("User Found.Please Switch to User Page");
+        setIsUserDB(true);
         if (confirm)
           navigate("/userpage", {
             state:
@@ -314,12 +328,21 @@ const SearchPincode = () => {
             value: stage.value,
           }))
         );
+
         setSelectedUserProduct(
           (detail.product_db || []).map((item) => ({
             label: item.label,
             value: item.value,
           }))
         );
+        setAmountHandle({
+          prevTotal: detail.amountDetails_db?.totalAmount || 0,
+          prevExtra: detail.amountDetails_db?.extraCharges || 0,
+          prevFinal: detail.amountDetails_db?.finalCost || 0,
+          prevNewAmount: detail.amountDetails_db?.newAmount || 0,
+          prevPaid: detail.amountDetails_db?.paidAmount || 0,
+          prevBalance: detail.amountDetails_db?.balanceAmount || 0,
+        });
 
         setClientDetails((prev) => ({
           ...prev,
@@ -334,16 +357,32 @@ const SearchPincode = () => {
           emails: emails,
           quotationShare: detail.quotationShare_db,
           expectedDate: "",
-          remarks: detail.remarks_db,
+          remarks: detail.remarks_db || "",
           callType: detail.callType_db,
           verifiedBy: detail.verifiedBy_db,
           time: detail.time_db,
-          label: detail.label_db,
+          label: detail.label_db || "",
           website: detail.website_db,
           database: detail.database_status_db,
+          amountDetails: {
+            totalAmount: detail.amountDetails_db?.totalAmount || "",
+            paidAmount: detail.amountDetails_db?.paidAmount || "",
+            extraCharges: detail.amountDetails_db?.extraCharges || "",
+            finalCost: detail.amountDetails_db?.finalCost || "",
+            newAmount: 0,
+            balanceAmount: detail.amountDetails_db?.balanceAmount || "",
+            gst: detail.amountDetails_db?.gst || "",
+            referenceId: detail.amountDetails_db?.referenceId || "",
+            mode: detail.amountDetails_db?.mode || "",
+          },
           completion: {
             ...prev.completion,
             receivedProduct: detail?.product_db?.[0]?.label || "",
+            status: detail?.completion_db?.status || "",
+            newExpectedDate: "",
+            newTime: "",
+            newRemark: detail?.completion_db?.newRemark || "",
+            newStage: detail?.completion_db?.newStage || "",
           },
         }));
         if (
@@ -525,10 +564,33 @@ const SearchPincode = () => {
     }
   };
 
-  const handleSaveSubscribeUserDetails = async (
-    updatedHistory = clientDetails.amountHistory
-  ) => {
-    console.log("tracker", clientDetails.tracker);
+  const handlePaymentDetails = async () => {
+    const prod = selectedUserProduct.map((prod) => prod.label);
+    try {
+      const result = await axios.post(
+        `${base_url}/payment/history`,
+        {
+          amountDetails: clientDetails.amountDetails,
+          userId: userLoginId,
+          clientId: clientDetails.clientId,
+          clientName: clientDetails.clientName,
+          quotationShare: clientDetails.quotationShare,
+          product: prod[0],
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("payment done", result);
+      alert("Payment done");
+    } catch (err) {
+      console.log("internal error", err);
+    }
+  };
+
+  const handleSaveSubscribeUserDetails = async () => {
     try {
       if (isUnsavedNewForm) {
         await new Promise((resolve) => {
@@ -580,7 +642,7 @@ const SearchPincode = () => {
           tracker: clientDetails.tracker,
           label: clientDetails.label,
           amountDetails: clientDetails.amountDetails,
-          amountHistory: updatedHistory,
+          database: "client_db",
           followUpTime: getSelectedTime,
           completion: clientDetails.completion,
           action: "create User",
@@ -633,33 +695,26 @@ const SearchPincode = () => {
         completedDate: new Date().toLocaleDateString("en-GB"),
       };
 
-      let updatedHistory = clientDetails.amountHistory;
       if (
         clientDetails.tracker &&
         clientDetails.tracker.installation_db &&
-        clientDetails.tracker.installation_db.completed === true
+        clientDetails.tracker.installation_db.completed === true &&
+        clientDetails.completion &&
+        clientDetails.completion.status === "Done"
       ) {
         const { totalAmount, paidAmount, balanceAmount } = handleCalculation(
           null,
           0
         );
 
-        const historyRecord = {
-          date: new Date().toLocaleDateString("en-GB"),
-          time: new Date().toLocaleTimeString(),
-          updatedBy: userLoginId,
-          ...clientDetails.amountDetails,
-          totalAmount: totalAmount,
-          paidAmount: paidAmount,
-          balanceAmount: balanceAmount,
-        };
-        updatedHistory = [...clientDetails.amountHistory, historyRecord];
-        setClientDetails((prev) => ({
-          ...prev,
-          amountHistory: updatedHistory,
-        }));
+        await handleSaveSubscribeUserDetails();
+      }
 
-        await handleSaveSubscribeUserDetails(updatedHistory);
+      if (
+        clientDetails.amountDetails.finalCost > 0 &&
+        clientDetails.amountDetails.newAmount > 0
+      ) {
+        await handlePaymentDetails();
       }
 
       const rawRecord = await axios.get(
@@ -724,7 +779,7 @@ const SearchPincode = () => {
           tracker: clientDetails.tracker,
           label: clientDetails.label,
           amountDetails: clientDetails.amountDetails,
-          amountHistory: updatedHistory,
+          database: "client_db",
           followUpTime: getSelectedTime,
           completion: clientDetails.completion,
           action: "create",
@@ -777,7 +832,6 @@ const SearchPincode = () => {
           completion: clientDetails.completion,
           label: clientDetails.label,
           amountDetails: clientDetails.amountDetails,
-          amountHistory: updatedHistory,
           followUpTime: getSelectedTime,
           action: "create",
         }
@@ -821,35 +875,35 @@ const SearchPincode = () => {
         completed: true,
         completedDate: new Date().toLocaleDateString("en-GB"),
       };
-      let updatedHistory = clientDetails.amountHistory;
-      if (clientDetails.tracker.installation_db.completed === true) {
+      if (
+        clientDetails.completion.newStage &&
+        clientDetails.completion.status === "Done"
+      ) {
         const { totalAmount, paidAmount, balanceAmount } = handleCalculation(
           null,
           0
         );
 
-        const historyRecord = {
-          date: new Date().toLocaleDateString("en-GB"),
-          time: new Date().toLocaleTimeString(),
-          updatedBy: userLoginId,
-          ...clientDetails.amountDetails,
-          totalAmount: totalAmount,
-          paidAmount: paidAmount,
-          balanceAmount: balanceAmount,
-        };
-        updatedHistory = [...clientDetails.amountHistory, historyRecord];
-        setClientDetails((prev) => ({
-          ...prev,
-          amountHistory: updatedHistory,
-        }));
-
-        await handleSaveSubscribeUserDetails(updatedHistory);
+        await handleSaveSubscribeUserDetails();
       }
+
+      if (
+        clientDetails.amountDetails.finalCost > 0 &&
+        clientDetails.amountDetails.newAmount > 0
+      ) {
+        await handlePaymentDetails();
+      }
+
       let userResult;
       let result;
-      if (clientDetails.tracker.installation_db.completed === true) {
+
+      if (
+        clientDetails.completion.newStage &&
+        clientDetails.completion.status === "Done"
+      ) {
         userResult = await handleSaveSubscribeUserDetails();
       } else {
+        console.log("000000000000000000000000000000000000");
         result = await axios.put(
           `${base_url}/clients/update-client/${currentClientId}`,
           {
@@ -885,6 +939,7 @@ const SearchPincode = () => {
             tracker: clientDetails.tracker,
             completion: clientDetails.completion,
             followUpTime: getSelectedTime,
+            amountDetails: clientDetails.amountDetails,
             action: "update",
           }
         );
@@ -928,7 +983,6 @@ const SearchPincode = () => {
           tracker: clientDetails.tracker,
           completion: clientDetails.completion,
           amountDetails: clientDetails.amountDetails,
-          amountHistory: updatedHistory,
           followUpTime: getSelectedTime,
           action: "update",
         }
@@ -984,7 +1038,8 @@ const SearchPincode = () => {
     }
     setIsUnsavedNewForm(false);
     handleTimeChange("HH:MM:SS AM/PM");
-    handleNewTimeChange("HH:MM:SS AM/PM");
+    setStageTab("Planner");
+    setIsUserDB(false);
   };
 
   //POINTER TO MOVE PREVIOUSz
@@ -1016,6 +1071,8 @@ const SearchPincode = () => {
 
     setIsUnsavedNewForm(false);
     handleTimeChange("HH:MM:SS AM/PM");
+    setStageTab("Planner");
+    setIsUserDB(false);
   };
 
   //CREATE NEW FORM FOR CLIENT DB
@@ -1090,7 +1147,6 @@ const SearchPincode = () => {
           newTime: "",
           newRemark: "",
         },
-        amountHistory: [],
       });
       // setIsClientIdAvailableInDb(false)
 
@@ -1118,18 +1174,19 @@ const SearchPincode = () => {
 
   //TIMEPICKERHANDLER FOR TIME
   const handleTimeChange = (time) => {
-    if (time === "HH:MM:SS AM/PM") {
-      time = "NA";
+    if (!time || time === "HH:MM:SS AM/PM") {
+      setGetSelectedTime("NA");
+    } else {
+      setGetSelectedTime(time);
     }
-    setGetSelectedTime(time);
-    // console.log("Selected Time:", time);
   };
+
   const handleNewTimeChange = (time) => {
-    if (time === "HH:MM:SS AM/PM") {
-      time = "NA";
+    if (!time || time === "HH:MM:SS AM/PM") {
+      setGetSelectedNewTime("NA"); // ✅ use null, not "NA"
+    } else {
+      setGetSelectedNewTime(time);
     }
-    setGetSelectedNewTime(time);
-    // console.log("Selected Time:", time);
   };
 
   const handleStageChange = (selectedOptions) => {
@@ -1246,9 +1303,27 @@ const SearchPincode = () => {
     setSelectedUserProduct(selectedOptions);
   };
 
-  const hanldeAmountChange = (fieldType, value) => {
-    value = Math.abs(parseFloat(value)) || 0;
+  const hanldeAmountChange = (fieldType, rawValue) => {
+    let value = rawValue;
+
+    // ✅ convert to number only if not gst/mode/referenceId
+    if (
+      fieldType !== "gst" &&
+      fieldType !== "mode" &&
+      fieldType !== "referenceId"
+    ) {
+      value = Math.abs(Number(rawValue)) || 0;
+    }
+
+    // ✅ gst validation
+    if (fieldType === "gst" && Number(value) > 99) {
+      return; // stop update
+    }
+
+    // ✅ calculate
     const calculation = handleCalculation(fieldType, value);
+
+    // ✅ update state
     setClientDetails((prev) => ({
       ...prev,
       amountDetails: {
@@ -1257,35 +1332,64 @@ const SearchPincode = () => {
         totalAmount: calculation.totalAmount,
         paidAmount: calculation.paidAmount,
         balanceAmount: calculation.balanceAmount,
+        newAmount: calculation.newAmount, // always keep the latest correct newAmount
       },
     }));
   };
 
   const handleCalculation = (fieldType, value) => {
-    const finalCost = parseFloat(clientDetails.amountDetails.finalCost) || 0;
+    const finalCost =
+      Number(amountHandle.prevFinal) ||
+      Number(clientDetails.amountDetails.finalCost) ||
+      0;
     const extraCharges =
-      parseFloat(clientDetails.amountDetails.extraCharges) || 0;
-    const newAmount = parseFloat(clientDetails.amountDetails.newAmount) || 0;
+      Number(amountHandle.prevExtra) ||
+      Number(clientDetails.amountDetails.extraCharges) ||
+      0;
+    const prevPaidAmount = Number(amountHandle.prevPaid) || 0;
 
     let updatedFinalCost = finalCost;
     let updatedExtraCharges = extraCharges;
-    let updatedNewAmount = newAmount;
+    let newAmount = Number(clientDetails.amountDetails.newAmount) || 0; // keep current newAmount
+    let updatedPaidAmount = prevPaidAmount;
 
-    if (fieldType === "finalCost") updatedFinalCost = value || 0;
-    if (fieldType === "extraCharges") updatedExtraCharges = value || 0;
-    if (fieldType === "newAmount") updatedNewAmount = value || 0;
+    // ✅ update cost fields
+    if (fieldType === "finalCost") updatedFinalCost = Number(value) || 0;
+    if (fieldType === "extraCharges") updatedExtraCharges = Number(value) || 0;
+
+    // ✅ only update if fieldType = newAmount
+    if (fieldType === "newAmount") {
+      newAmount = Number(value) || 0;
+      updatedPaidAmount = prevPaidAmount + newAmount;
+    } else {
+      // when editing gst/mode/referenceId, keep same paid + newAmount
+      updatedPaidAmount = prevPaidAmount + newAmount;
+    }
 
     const totalAmount = updatedFinalCost + updatedExtraCharges;
-    const paidAmount = updatedNewAmount;
-    const balanceAmount = totalAmount - paidAmount;
+    let balanceAmount = totalAmount - updatedPaidAmount;
 
-    return { totalAmount, paidAmount, balanceAmount };
+    // ✅ Rule: if newAmount > totalAmount → reset newAmount, keep paid = prevPaid
+    if (updatedPaidAmount > totalAmount) {
+      alert("Paid Amount cannot exceed TotalCost");
+      newAmount = 0;
+      updatedPaidAmount = prevPaidAmount; // rollback to previous paid only
+      balanceAmount = totalAmount - updatedPaidAmount;
+    }
+
+    return {
+      totalAmount,
+      paidAmount: updatedPaidAmount,
+      balanceAmount,
+      newAmount,
+    };
   };
 
   const handleNewVisit = () => {
     setSelectedUserProduct([]);
     setSelectedStageOptions([]);
     handleTimeChange("HH:MM:SS AM/PM");
+    handleNewTimeChange("HH:MM:SS AM/PM");
     setCheckInstallation(false);
     setClientDetails((prev) => ({
       ...prev,
@@ -1301,6 +1405,7 @@ const SearchPincode = () => {
         newExpectedDate: "",
         newTime: "",
         newRemark: "",
+        newStage: "",
       },
       tracker: {
         new_data_db: { completed: false, completedDate: "" },
@@ -1333,19 +1438,6 @@ const SearchPincode = () => {
         newAmount: "",
         balanceAmount: "",
       },
-      amountHistory: [
-        {
-          date: "",
-          time: "",
-          totalAmount: "",
-          paidAmount: "",
-          extraCharges: "",
-          finalCost: "",
-          newAmount: "",
-          balanceAmount: "",
-          updatedBy: "",
-        },
-      ],
     }));
   };
 
@@ -1571,7 +1663,6 @@ const SearchPincode = () => {
               </div>
             </div>
           </header>
-
           <div className={styles.basicform}>
             <div className={styles.basic}>
               <h2 style={{ fontSize: "18px" }}>Basic </h2>
@@ -2119,6 +2210,55 @@ const SearchPincode = () => {
                       }}
                     />
                   </span>
+                  <span style={{ display: "flex" }}>
+                    <CustomInput
+                      type="text"
+                      label={"GST %"}
+                      min={0}
+                      max={99}
+                      value={clientDetails.amountDetails.gst}
+                      onChange={(e) => {
+                        hanldeAmountChange("gst", e.target.value);
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "2px",
+                      }}
+                    >
+                      <label htmlFor="" style={{ fontSize: "16px" }}>
+                        Mode
+                      </label>
+                      <select
+                        name=""
+                        id=""
+                        value={clientDetails.amountDetails.mode}
+                        onChange={(e) => {
+                          hanldeAmountChange("mode", e.target.value);
+                        }}
+                        style={{ width: "60%", padding: "1px 10px" }}
+                      >
+                        <option value="">--Select--</option>
+                        {onlinePaymentMode.map((item, idx) => (
+                          <option key={idx} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <CustomInput
+                      type="text"
+                      label={"Reference Id"}
+                      value={clientDetails.amountDetails.referenceId}
+                      onChange={(e) => {
+                        hanldeAmountChange("referenceId", e.target.value);
+                      }}
+                    />
+                  </span>
                 </div>
               ) : (
                 <div></div>
@@ -2180,19 +2320,22 @@ const SearchPincode = () => {
                       id=""
                       style={{ padding: "2px 10px", width: "60%" }}
                       value={clientDetails.completion.newStage}
-                      onChange={(e)=>{setClientDetails((prev)=>({
-                        ...prev,
-                        completion:{
-                          ...prev.completion,
-                          newStage:e.target.value,
-                        }
-                      }))}}
+                      onChange={(e) => {
+                        setClientDetails((prev) => ({
+                          ...prev,
+                          completion: {
+                            ...prev.completion,
+                            newStage: e.target.value,
+                          },
+                        }));
+                      }}
                     >
                       <option value="">--Select--</option>
-                      <option value="Demo">Demo</option>
-                      <option value="FollowUp">FollowUp</option>
-                      <option value="Installation">Installation</option>
-                      <option value="Hot">Hot</option>
+                      {(selectNewStage || []).map((item, idx) => (
+                        <option key={idx} value={item}>
+                          {item}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2240,7 +2383,7 @@ const SearchPincode = () => {
                     Follow Up Time
                   </label>
                   <TimePickerComponent
-                    value={getSelectedNewTime}
+                    value={getSelectedNewTime || ""}
                     onTimeChange={handleNewTimeChange}
                   />
                 </div>
@@ -2435,13 +2578,81 @@ const SearchPincode = () => {
               </div>
             </div>
           </div>
+          {isUserDB && (
+            <div
+              style={{
+                position: "fixed",
+                width: "100vw",
+                height: "95%",
+                top: "0",
+                left: "0",
+              }}
+            >
+              .
+            </div>
+          )}
         </div>
         <div>
+          <div
+            style={{
+              width: "100%",
+              height: "auto",
+              display: "flex",
+              justifyContent: "end",
+              padding: "10px",
+            }}
+          >
+            <button
+              onClick={() => {
+                setHistoryPop((prev) => !prev);
+              }}
+            >
+              View
+            </button>
+          </div>
           <History
             onRefresh={refreshHistory}
             onCurrentClientId={clientDetails.clientId}
+            sorts={"asc"}
           />
         </div>
+        {historyPop && (
+          <div
+            style={{
+              width: "100%",
+              height: "auto",
+              position: "fixed",
+              background: "white",
+              top:'0',
+              left:"0",
+              fontSize:"36px",
+              padding:"50px",
+            }}
+          >
+            <History
+              onRefresh={refreshHistory}
+              onCurrentClientId={clientDetails.clientId}
+              sorts={"des"}
+            />
+                      <div
+            style={{
+              width: "100%",
+              height: "auto",
+              display: "flex",
+              justifyContent: "end",
+              padding: "10px",
+            }}
+          >
+            <button
+              onClick={() => {
+                setHistoryPop(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          </div>
+        )}
       </div>
     </>
   );

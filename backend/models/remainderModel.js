@@ -9,6 +9,7 @@ const remainderSchema = new mongoose.Schema({
     time_db:String,
     status_db:{type:Boolean, default:false},
     operation_db:{type:String, default:"Schedule"},
+    database_db:String,
 })
 
 const remainderModel = mongoose.model("remainderModel",remainderSchema)

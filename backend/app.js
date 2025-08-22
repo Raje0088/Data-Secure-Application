@@ -23,6 +23,8 @@ const viewExcelRoutes = require("./routes/viewExcelRoutes.js")
 const LoginRoutes = require("./routes/LoginRoutes.js")
 const autoBackupRoutes = require("./routes/autoBackupRoutes.js")
 const remainderRoutes = require("./routes/remainderRoutes.js")
+const paymentHistoryRoutes = require("./routes/PaymentHistoryRoutes.js")
+
 const {initializeSocket} = require("./socketio/socketio.js")
 const {startRemainder} = require("./controllers/remainderController.js")
 const path = require("path");
@@ -56,6 +58,7 @@ app.use("/view-excel",viewExcelRoutes)
 app.use("/auth",LoginRoutes)
 app.use("/backup",autoBackupRoutes)
 app.use("/remainders",remainderRoutes)
+app.use("/payment",paymentHistoryRoutes)
 // app.use(express.static('uploadExcel'))  
 
 connectDB();

@@ -6,6 +6,7 @@ import CustomSelect from "./CustomSelect";
 import UserAssignTask from "./UserAssignTask";
 import { FaWpforms } from "react-icons/fa6";
 import { IoMdCloseCircle } from "react-icons/io";
+import { base_url } from "../config/config";
 
 const Register = () => {
   const [uniqueUserIdGenerator, setUniqueUserIdGenerator] = useState("");
@@ -78,7 +79,7 @@ const Register = () => {
       const checkUserId = async () => {
         try {
           const res = await fetch(
-            `http://localhost:3000/users/checked-userId?userId=${currentId}`
+            `${base_url}/users/checked-userId?userId=${currentId}`
           );
           const data = await res.json();
           setUserIdStatus(data.exists ? "taken" : "available");
@@ -96,7 +97,7 @@ const Register = () => {
 
   useEffect(() => {
     const fetchRoleOption = async () => {
-      const res = await fetch("http://localhost:3000/setting/rolename-data");
+      const res = await fetch(`${base_url}/setting/rolename-data`);
       const data = await res.json();
       const option = data.result.map((item) => ({
         label: item.rolename_name,
@@ -111,7 +112,7 @@ const Register = () => {
   //DIVISIONOPTION FETCHING
   useEffect(() => {
     const fetchDivisionOption = async () => {
-      const res = await fetch("http://localhost:3000/setting/division-data");
+      const res = await fetch(`${base_url}/setting/division-data`);
       const data = await res.json();
       const option = data.result.map((item) => ({
         label: item.division_name,
@@ -134,7 +135,7 @@ const Register = () => {
     if (userLoginId) console.log("id", userLoginId, selectRolename);
     const fetch = async () => {
       const result = await axios.post(
-        "http://localhost:3000/utils/send-user-id",
+        `${base_url}/utils/send-user-id`,
         {
           roleName: selectRolename?.label,
           createdBy: userLoginId,
@@ -173,7 +174,7 @@ const Register = () => {
 
         for (const divisionId of divisionIdxs) {
           const res = await fetch(
-            `http://localhost:3000/setting/assignproduct-data/${divisionId}`
+            `${base_url}/setting/assignproduct-data/${divisionId}`
           );
           const data = await res.json();
 
@@ -202,7 +203,7 @@ const Register = () => {
 
   //WHEN SAVE DATA AUTO UPDATE UNIQUE ID INCREASE BY 1
   // useEffect(() => {
-  //   fetch("http://localhost:3000/users/next-id")
+  //   fetch("${base_url}/users/next-id")
   //     .then((res) => res.json())
   //     .then((data) => setUniqueUserIdGenerator(data.nextUserId));
   //   // .catch((err)=> console.log("uniqueId not fetch",err))
@@ -286,13 +287,13 @@ const Register = () => {
 
     try {
       const result = await axios.post(
-        "http://localhost:3000/users/createUser",
+        `${base_url}/users/createUser`,
         formDetails,
         {
           headers: { "Content-Type": "application/json" },
         }
       );
-      const res = await fetch("http://localhost:3000/users/next-id");
+      const res = await fetch(`${base_url}/users/next-id`);
       const data = await res.json();
       console.log("User Created Sucessfully", result.data);
       console.log("User Chi id", uniqueUserIdGenerator);
@@ -312,7 +313,7 @@ const Register = () => {
     if (noPermissionData) return alert("at least select one permission");
     try {
       const result = await axios.post(
-        "http://localhost:3000/users/checked",
+        `${base_url}/users/checked`,
         { ...permissionData, generateUniqueId: uniqueUserIdGenerator },
         {
           headers: { "Content-Type": "application/json" },
@@ -346,7 +347,7 @@ const Register = () => {
     }
     try {
       const result = await axios.post(
-        "http://localhost:3000/users/userIdPassAuth",
+        `${base_url}/users/userIdPassAuth`,
         {
           userId: userAuth.userIdText,
           password: userAuth.passwordText,
@@ -382,13 +383,13 @@ const Register = () => {
     //
     try {
       const result1 = await axios.get(
-        `http://localhost:3000/users/search-by-user/${serchByUserId}`
+        `${base_url}/users/search-by-user/${serchByUserId}`
       );
       const result2 = await axios.get(
-        `http://localhost:3000/users/search-by-permission/${serchByUserId}`
+        `${base_url}/users/search-by-permission/${serchByUserId}`
       );
       const result3 = await axios.get(
-        `http://localhost:3000/users/search-by-userid-and-password/${serchByUserId}`
+        `${base_url}/users/search-by-userid-and-password/${serchByUserId}`
       );
 
       const data1 = result1.data
@@ -481,13 +482,13 @@ const Register = () => {
   const fetchAllUser = async () => {
     try {
       const result1 = await axios.get(
-        `http://localhost:3000/users/search-all-user`
+        `${base_url}/users/search-all-user`
       );
       const result2 = await axios.get(
-        `http://localhost:3000/users/search-all-permission`
+        `${base_url}/users/search-all-permission`
       );
       const result3 = await axios.get(
-        `http://localhost:3000/users/search-all-userid-and-password`
+        `${base_url}/users/search-all-userid-and-password`
       );
 
       const data1 = result1.data
@@ -554,21 +555,21 @@ const Register = () => {
     }
     try {
       const data1 = await axios.put(
-        `http://localhost:3000/users/updateUser/${updateUniqueId}`,
+        `${base_url}/users/updateUser/${updateUniqueId}`,
         formDetails,
         {
           headers: { "Content-Type": "application/json" },
         }
       );
       const data2 = await axios.put(
-        `http://localhost:3000/users/updateChecked/${updateUniqueId}`,
+        `${base_url}/users/updateChecked/${updateUniqueId}`,
         PermisionDetails,
         {
           headers: { "Content-Type": "application/json" },
         }
       );
       const data3 = await axios.put(
-        `http://localhost:3000/users/update-userIdPassAuth/${updateUniqueId}`,
+        `${base_url}/users/update-userIdPassAuth/${updateUniqueId}`,
         UserIdPassword,
         {
           headers: { "Content-Type": "application/json" },
@@ -588,20 +589,20 @@ const Register = () => {
     console.log("deleting id", deleteUniqueId);
     try {
       const data1 = await axios.delete(
-        `http://localhost:3000/users/delete-user/${deleteUniqueId}`
+        `${base_url}/users/delete-user/${deleteUniqueId}`
       );
       const data2 = await axios.delete(
-        `http://localhost:3000/users/delete-permission/${deleteUniqueId}`
+        `${base_url}/users/delete-permission/${deleteUniqueId}`
       );
       const data3 = await axios.delete(
-        `http://localhost:3000/users/delete-userIdAndPassword/${deleteUniqueId}`
+        `${base_url}/users/delete-userIdAndPassword/${deleteUniqueId}`
       );
       const isCheckUserForm = await axios.get(
-        `http://localhost:3000/users/searchuser-task-form/${deleteUniqueId}`
+        `${base_url}/users/searchuser-task-form/${deleteUniqueId}`
       );
       if (isCheckUserForm) {
         const userForm = await axios.delete(
-          `http://localhost:3000/users/deleteuser-task-form/${deleteUniqueId}`
+          `${base_url}/users/deleteuser-task-form/${deleteUniqueId}`
         );
         console.log("User delete", userForm);
         alert("UserForm delete", userForm);
@@ -624,7 +625,7 @@ const Register = () => {
     const searchText = text;
     try {
       const result1 = await axios.get(
-        `http://localhost:3000/users/search-through-mobile-email-name/?query=${searchText}`
+        `${base_url}/users/search-through-mobile-email-name/?query=${searchText}`
       );
       console.log("Search found", result1.data.result);
       setUserDataList1(result1.data.result); // Use correct data shape
@@ -641,7 +642,7 @@ const Register = () => {
 
   useEffect(() => {
     axios
-      .get(`http://localhost:3000/users/searchuser-task-form/${updateUniqueId}`)
+      .get(`${base_url}/users/searchuser-task-form/${updateUniqueId}`)
       .then((res) => {
         setIsUserFormCreated(!!res.data.result);
       })

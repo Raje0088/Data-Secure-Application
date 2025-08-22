@@ -5,6 +5,7 @@ import Graph from "./Graph";
 import { useEffect } from "react";
 import { useState } from "react";
 import axios from "axios";
+import { base_url } from "../../config/config";
 
 const Report = ({ userLoginId = "E02_SA" }) => {
   const [showDailyReport, setShowDailyReport] = useState([]);
@@ -20,7 +21,7 @@ const Report = ({ userLoginId = "E02_SA" }) => {
     const fetchReport = async () => {
       try {
         const result = await axios.get(
-          `http://localhost:3000/progress/getprogress/${userLoginId}`
+          `${base_url}/progress/getprogress/${userLoginId}`
         );
         console.log("repoert", result.data.result);
         setShowDailyReport(result.data.result);

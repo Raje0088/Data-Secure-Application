@@ -1,6 +1,7 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import styles from "./History.module.css"
+import { base_url } from "../../config/config";
 
 const History = (props) => {
   const [mapClientAllHistory, setMapClientAllHistory] = useState([]);
@@ -12,16 +13,23 @@ const History = (props) => {
     const fetchClientHistory = async () => {
       try {
         const result = await axios.get(
-          `http://localhost:3000/history/get-client-history/${props.onCurrentClientId}`
+          `${base_url}/history/get-client-history/${props.onCurrentClientId}`
         ); //props.onCurrentClientId
         console.log("History result", result.data);
-        setMapClientAllHistory(result.data.result);
+
+        const sortData = [...result.data.result];
+        if(props.sorts === "des"){
+          sortData.sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt))
+        }else if(props.sorts === "asc"){
+          sortData.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        }
+        setMapClientAllHistory(sortData);
       } catch (err) {
         console.log("internal error", err);
       }
     };
     fetchClientHistory();
-  }, [props.onCurrentClientId,props.onRefresh]);
+  }, [props.onCurrentClientId,props.onRefresh,props.sorts]);
   return (
     <div className={styles.tablecontent}>
       {/* <div> HISTORY</div> */}

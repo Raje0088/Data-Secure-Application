@@ -5,6 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { MdOutlineDownloadDone } from "react-icons/md";
 import { IoHourglassOutline } from "react-icons/io5";
+import { base_url } from "../config/config";
 
 const Remainder = ({ remainder, setRemainder, refreshRemainder }) => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const Remainder = ({ remainder, setRemainder, refreshRemainder }) => {
     const fetch = async () => {
       try {
         const result = await axios.put(
-          `http://localhost:3000/remainders/status/${remainderDate}`,
+          `${base_url}/remainders/status/${remainderDate}`,
           {}
         );
         console.log("yo", result.data.result);
@@ -96,8 +97,14 @@ const Remainder = ({ remainder, setRemainder, refreshRemainder }) => {
     setFilterRemainder(result);
   };
 
-  const redirectToClientPage = (id) => {
-    navigate("/client-page", { state: { id, from: "remainder" } });
+  const redirectToClientPage = (id, db) => {
+    const filterId = filterRemainder.filter((item) => item.client_id === id);
+    const stg = filterId.map((item) => item.stage_db);
+    if (db === "client_db") {
+      navigate("/client-page", { state: { id, stg, from: "remainder" } });
+    } else {
+      navigate("/userpage", { state: { id, stg, from: "remainder" } });
+    }
   };
 
   return (
@@ -236,7 +243,7 @@ const Remainder = ({ remainder, setRemainder, refreshRemainder }) => {
                   <strong
                     className={styles.text}
                     onClick={() => {
-                      redirectToClientPage(item.client_id);
+                      redirectToClientPage(item.client_id, item.database_db);
                     }}
                   >
                     {item.client_id}

@@ -3,6 +3,7 @@ import { Chart as ChartJS, defaults, scales } from "chart.js/auto";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import styles from "./Graph.module.css";
 import axios from "axios";
+import { base_url } from "../../config/config";
 
 
 defaults.maintainAspectRatio = false;
@@ -15,7 +16,7 @@ const Graph = ({ userLoginId = "E02_SA" }) => {
     const fetchGraph = async () => {
       try {
         const result = await axios.get(
-          `http://localhost:3000/progress/get-graph/${userLoginId}`
+          `${base_url}/progress/get-graph/${userLoginId}`
         );
         console.log("result graph", result.data.result);
         setGraphData(result.data.result);

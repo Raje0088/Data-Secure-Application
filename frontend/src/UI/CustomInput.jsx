@@ -10,6 +10,7 @@ const CustomInput = ({
   required = false,
   readonly =false,
   min=0,
+  max="",
 }) => {
   return (
       <div className={styles.inputbox}>
@@ -24,6 +25,7 @@ const CustomInput = ({
           required={required}
           readOnly={readonly}
           min={min}
+          max={max}
         />
       </div>
   );

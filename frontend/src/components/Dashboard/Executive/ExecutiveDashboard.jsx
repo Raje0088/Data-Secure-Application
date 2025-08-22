@@ -9,6 +9,7 @@ import AssignWork from "../DashboardComponent/AssignWork";
 import ScheduleOptima from "../DashboardComponent/ScheduleOptima";
 import ExtraTaskRequest from "../DashboardComponent/ExtraTaskRequest";
 import { AuthContext } from "../../../context-api/AuthContext";
+import { base_url } from "../../../config/config";
 
 const ExecutiveDashboard = () => {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ const ExecutiveDashboard = () => {
 
   const fetchTask = async () => {
     const result = await axios.get(
-      `http://localhost:3000/task/get-clientids-assign-by-to/${userLoginId}?taskStatus=${taskStatus}`
+      `${base_url}/task/get-clientids-assign-by-to/${userLoginId}?taskStatus=${taskStatus}`
     );
     const data = result.data;
     // console.log("task data", data);
@@ -67,7 +68,7 @@ const ExecutiveDashboard = () => {
   useEffect(() => {
     const fetchExtraTask = async () => {
       const result = await axios.get(
-        `http://localhost:3000/users/searchuser-task-form/${userLoginId}`
+        `${base_url}/users/searchuser-task-form/${userLoginId}`
       );
       if (result.data.result) {
         setExtraTask(result.data.result);

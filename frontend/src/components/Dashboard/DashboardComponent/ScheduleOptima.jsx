@@ -4,6 +4,7 @@ import styles from "./ScheduleOptima.module.css";
 import TimePickerComponent from "../../../UI/TimePickerComponent";
 import { AuthContext } from "../../../context-api/AuthContext";
 import { useContext } from "react";
+import { base_url } from "../../../config/config";
 
 const ScheduleOptima = (props) => {
   const {userLoginId} = useContext(AuthContext)
@@ -34,7 +35,7 @@ const ScheduleOptima = (props) => {
   useEffect(() => {
     const fetch = async () => {
       const result = await axios.get(
-        `http://localhost:3000/users/search-by-user/${userLoginId}`
+        `${base_url}/users/search-by-user/${userLoginId}`
       );
       // console.log("product list hai", result.data.assignProduct);
       setUserProduct(result.data.assignProduct);
@@ -49,7 +50,7 @@ const ScheduleOptima = (props) => {
 
       if (!showProgressMode) {
         const result = await axios.get(
-          `http://localhost:3000/schedule/get-goals/${userLoginId}`
+          `${base_url}/schedule/get-goals/${userLoginId}`
         );
         console.log("goals", result.data.result.goals_db);
         setShowProgress(result.data.result.goals_db);
@@ -78,7 +79,7 @@ const ScheduleOptima = (props) => {
   const handleScheduleGoals = async () => {
     console.log("schedulegoals", scheduleData);
     try {
-      const result = await axios.post("http://localhost:3000/schedule/goal", {
+      const result = await axios.post(`${base_url}/schedule/goal`, {
         userId: props.userLoginId,
         date: selectDate,
         deadline: getSelectedTime,

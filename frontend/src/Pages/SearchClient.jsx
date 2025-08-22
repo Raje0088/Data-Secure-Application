@@ -13,7 +13,7 @@ const SearchClient = () => {
   const location = useLocation();
   // console.log("state", location.state);
   const { DumpId, DumpBy, DumpURL } = location.state || {};
-  console.log("yo",DumpId, DumpBy, DumpURL)
+  // console.log("yo", DumpId, DumpBy, DumpURL);
   const [userLoginId, setUserLoginId] = useState("SA");
 
   const [filterRaw, setFilterRaw] = useState({
@@ -174,9 +174,7 @@ const SearchClient = () => {
   // console.log("yo", trueSetter);
   useEffect(() => {
     const fetchPlaces = async () => {
-      const result = await axios.get(
-        `${base_url}/pincode/fetch-pincode-rawdb`
-      );
+      const result = await axios.get(`${base_url}/pincode/fetch-pincode-rawdb`);
       // console.log("place", result.data);
       setGetPresentPlace(result.data);
     };
@@ -208,7 +206,7 @@ const SearchClient = () => {
   }, [filterRaw.state, filterRaw.district]);
 
   const handleSearchInput = (name, value) => {
-    console.log(name, value);
+    // console.log(name, value);
     setFilterRaw((prev) => ({
       ...prev,
       [name]: value,
@@ -431,22 +429,39 @@ const SearchClient = () => {
     console.log("selectedClient", selectedClients);
   };
 
+
   const handleRedirectClient = () => {
     try {
-      if (selectedClients.length === 0) {
-        return alert("no client selected yet");
+
+      if (filterRaw.clientType === "CLIENT") {
+        if (selectedClients.length === 0) {
+          return alert("no client selected yet");
+        }
+        if (selectedClients.length < 1) {
+          return alert("Please select one client only");
+        }
+        navigate("/client-page", {
+          state: { selectedClients, from: "searchClient" },
+        });
       }
-      if (selectedClients.length < 1) {
-        return alert("Please select one client only");
+      if (filterRaw.clientType === "USER") {
+        if (selectedClients.length === 0) {
+          return alert("no client selected yet");
+        }
+        if (selectedClients.length < 1) {
+          return alert("Please select one client only");
+        }
+        navigate("/userpage", {
+          state: { selectedClients, from: "searchClient" },
+        });
       }
-      navigate("/client-page", {
-        state: { selectedClients, from: "searchClient" },
-      });
       console.log("jump to client page");
     } catch (err) {
       console.log("internal error", err);
     }
   };
+
+  
 
   const handleFieldsChange = (name, value) => {
     setFields((prev) => ({
@@ -538,12 +553,9 @@ const SearchClient = () => {
     setIsLoading(true);
     setPage(pageNum);
     try {
-      const result = await axios.get(
-        `${base_url}/raw-data/mergefrom-alldb`,
-        {
-          params: { page: pageNum },
-        }
-      );
+      const result = await axios.get(`${base_url}/raw-data/mergefrom-alldb`, {
+        params: { page: pageNum },
+      });
       console.log("result", result.data);
       setDuplicateCheckerThreeDB(result.data);
       setIsLoading(false);
@@ -887,7 +899,7 @@ const SearchClient = () => {
       console.log("result", resultRecordTracker.data);
       alert(result.data.message);
       alert(resultRecordTracker.data.message);
-      handleAndMergeInThreeDB(1)
+      handleAndMergeInThreeDB(1);
     } catch (err) {
       console.log("internal error", err);
       if (
@@ -919,6 +931,9 @@ const SearchClient = () => {
 
   //   }
   // }
+
+
+    console.log("data=========",filterRaw.clientType)
   return (
     <div className={styles.main}>
       <div className={styles.filters}>
@@ -2322,13 +2337,17 @@ const SearchClient = () => {
                           />
                         </td>
                         <td>{idx + 1}</td>
-                        <td>                            <input
-                              type="radio"
-                              name="clientId"
-                              onChange={() => {
-                                handleUpdateInput("clientId", item.client_id);
-                              }}
-                            />{" "}{item.client_id}</td>
+                        <td>
+                          {" "}
+                          <input
+                            type="radio"
+                            name="clientId"
+                            onChange={() => {
+                              handleUpdateInput("clientId", item.client_id);
+                            }}
+                          />{" "}
+                          {item.client_id}
+                        </td>
                         <td>
                           <input
                             type="checkbox"

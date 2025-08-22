@@ -10,23 +10,29 @@ import CustomSelect from "../CustomSelect";
 import { BsShieldCheck } from "react-icons/bs";
 import { BsShieldX } from "react-icons/bs";
 import { BsDatabaseFillDown } from "react-icons/bs";
-import { FaAngleRight } from "react-icons/fa6";
+import { FaAngleRight, FaTruckMonster } from "react-icons/fa6";
 import { FaAngleLeft } from "react-icons/fa6";
 import TimePickerComponent from "../../UI/TimePickerComponent";
 import { FaFlag } from "react-icons/fa";
 import { FaUserClock } from "react-icons/fa6";
 import History from "../HistoryPage/History";
 import { HiOutlineRefresh } from "react-icons/hi";
+import { IoReceipt } from "react-icons/io5";
 import { base_url } from "../../config/config";
+import { useReactToPrint } from "react-to-print";
+import { useRef } from "react";
 
 const UserPage = () => {
+  const contentRef = useRef < HTMLDivElement > null;
+  const reactToPrintFn = useReactToPrint({ contentRef });
+
   const navigate = useNavigate();
   const { state } = useLocation();
   const executiveId = state?.userId || "E02_SA";
   const [getSelectedTime, setGetSelectedTime] = useState("");
   const taskDetails = state?.taskdata || "";
   // console.log("executiveId--", executiveId);
-  // console.log("taskDetails--", taskDetails);
+  console.log("taskDetails--", state?.selectedClients?.[0]);
   const [region, setRegion] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
   const [stateOptions, setStateOptions] = useState([]);
@@ -99,20 +105,10 @@ const UserPage = () => {
       finalCost: "",
       newAmount: "",
       balanceAmount: "",
+      gst: "",
+      referenceId: "",
+      mode: "",
     },
-    amountHistory: [
-      {
-        date: "",
-        time: "",
-        totalAmount: "",
-        paidAmount: "",
-        extraCharges: "",
-        finalCost: "",
-        newAmount: "",
-        balanceAmount: "",
-        updatedBy: "",
-      },
-    ],
   });
   const [stageOptions, setStageOptions] = useState([
     { label: "Support", value: "support_db" },
@@ -153,6 +149,27 @@ const UserPage = () => {
   const [storedBalanceAmount, setStoredBalanceAmount] = useState("");
   const [refreshHistory, setRefreshHistory] = useState(false);
   const [stageTab, setStageTab] = useState("Planner");
+  const [selectNewStage, setSelectNewStage] = useState([]);
+  const [amountHandle, setAmountHandle] = useState({
+    prevTotal: 0,
+    prevExtra: 0,
+    prevFinal: 0,
+    prevNewAmount: 0,
+    prevPaid: 0,
+    prevBalance: 0,
+  });
+  const onlinePaymentMode = [
+    "CASH",
+    "DEBIT CARD",
+    "CREDIT CARD",
+    "NET BANKING",
+    "UPI",
+    "WALLET",
+    "CHEQUE",
+  ];
+  const [paymentReceiptList, setPaymentReceiptList] = useState([]);
+  const [historyOpen, setHistoryOpent] = useState(false);
+
 
   useEffect(() => {
     setClientDetails((prev) => ({
@@ -165,49 +182,67 @@ const UserPage = () => {
   }, [getSelectedNewTime]);
 
   useEffect(() => {
-    const fetchUserIds = async () => {
+  console.log("newId=======================");
+  if (state?.from === "searchClient") {
+    const id = state.selectedClients?.[0];
+    if (id) {
+      const newId = id.replace("C", "U");
+      console.log("newId", newId);
+      setCurrentClientId(newId);
+      localStorage.setItem("user-subscription-id", newId); // persist chosen id
+    }
+  }
+  }, [state]);
+
+  useEffect(() => {
+  const fetchUserIds = async () => {
+    try {
       const getIds = await axios.get(
-        "http://localhost:3000/subscribe-user/get-usersubscribeids"
+        `${base_url}/subscribe-user/get-usersubscribeids`
       );
       console.log("getIds", getIds.data.result);
+
       if (getIds.data.result && getIds.data.result.length > 0) {
         const userSubscribeIds = getIds.data.result.map(
           (ids) => ids.client_subscription_id
         );
         setUserIdArray(userSubscribeIds);
-        setCurrentClientId(userSubscribeIds[userIndex] || userSubscribeIds[0]);
-      } else {
-        if (state) {
-          setCurrentClientId(state);
-        } else {
-          const userSubscriptionId = localStorage.getItem(
-            "user-subscription-id"
-          );
-          if (!localStorage.getItem("user-subscription-id")) {
-            localStorage.setItem("user-subscription-id", userSubscriptionId);
+
+        // Only set default if we DON'T already have a selected id from searchClient
+        if (!state?.from) {
+          const storedId =
+            localStorage.getItem("user-subscription-id") ||
+            userSubscribeIds[userIndex] ||
+            userSubscribeIds[0];
+          if (storedId) {
+            setCurrentClientId(storedId);
           }
-          // console.log("usersubscriptionId", userSubscriptionId);
-          setCurrentClientId(userSubscriptionId);
         }
       }
-    };
+    } catch (err) {
+      console.log("Error fetching user ids", err);
+    }
+  };
     fetchUserIds();
   }, []);
+  useEffect(() => {
+    console.log("Fetching with clientId:", currentClientId);
+  }, [currentClientId]);
 
   useEffect(() => {
-    if (userIdArray.length > 0) {
+    if (userIdArray.length > 0 && !state?.from) {
       setCurrentClientId(userIdArray[userIndex]);
     }
     console.log("ids index ==>", userIdArray[userIndex]);
     console.log(" index ==>", userIndex);
-  }, [userIdArray, userIndex]);
+  }, [userIdArray, userIndex,state]);
 
   useEffect(() => {
     if (!currentClientId) return; // Prevent call if ID is empty
     const fetchUserData = async () => {
       try {
         const result = await axios.get(
-          ` http://localhost:3000/subscribe-user/search-subscribe-user/${currentClientId}`
+          `${base_url}/subscribe-user/search-subscribe-user/${currentClientId}`
         );
         const detail = result?.data?.result;
         console.log("details", detail);
@@ -240,13 +275,23 @@ const UserPage = () => {
             stageOptions.some((stg) => stg.value === item.value)
           )
         );
+
+        setSelectNewStage((detail.stage_db || []).map((stage) => stage.label));
+        console.log("amount", detail.amountDetails_db);
         setSelectedUserProduct(
           (detail.product_db || []).map((item) => ({
             label: item.label,
             value: item.value,
           }))
         );
-
+        setAmountHandle({
+          prevTotal: detail.amountDetails_db.totalAmount,
+          prevExtra: detail.amountDetails_db.extraCharges,
+          prevFinal: detail.amountDetails_db.finalCost,
+          prevNewAmount: detail.amountDetails_db.newAmount,
+          prevPaid: detail.amountDetails_db.paidAmount,
+          prevBalance: detail.amountDetails_db.balanceAmount,
+        });
         setClientDetails((prev) => ({
           ...prev,
           sr_no: detail.client_serial_no_id,
@@ -272,9 +317,25 @@ const UserPage = () => {
           country: detail.country_db,
           remarks: detail.remarks_db,
           amountDetails: detail.amountDetails_db,
+          amountDetails: {
+            totalAmount: detail.amountDetails_db?.totalAmount || "",
+            paidAmount: detail.amountDetails_db?.paidAmount || "",
+            extraCharges: detail.amountDetails_db?.extraCharges || "",
+            finalCost: detail.amountDetails_db?.finalCost || "",
+            newAmount: 0,
+            balanceAmount: detail.amountDetails_db?.balanceAmount || "",
+            gst: detail.amountDetails_db?.gst || "",
+            referenceId: detail.amountDetails_db?.referenceId || "",
+            mode: detail.amountDetails_db?.mode || "",
+          },
           completion: {
             ...prev.completion,
             receivedProduct: detail?.product_db?.[0]?.label || "",
+            status: detail?.completion_db?.status || "",
+            newExpectedDate: "",
+            newTime: "",
+            newRemark: detail?.completion_db?.newRemark || "",
+            newStage: detail?.completion_db?.newStage || "",
           },
         }));
         setStoredTotalAmount(
@@ -320,7 +381,7 @@ const UserPage = () => {
         };
 
         const pincodeRes = await axios.get(
-          `http://localhost:3000/pincode/search-pincode`,
+          `${base_url}/pincode/search-pincode`,
           { params: searching }
         );
         const regionData = pincodeRes.data.data;
@@ -348,7 +409,7 @@ const UserPage = () => {
 
       // Second API for fetching based on names
       const placeData = await axios.get(
-        `http://localhost:3000/pincode/search-getplaces`,
+        `${base_url}/pincode/search-getplaces`,
         {
           params: {
             state: clientDetails.state,
@@ -373,7 +434,7 @@ const UserPage = () => {
     const userProductFetch = async () => {
       try {
         const result = await axios.get(
-          `http://localhost:3000/users/search-by-user/${userLoginId}`
+          `${base_url}/users/search-by-user/${userLoginId}`
         );
         console.log("product", result.data?.assignProduct);
         const productsList = result.data?.assignProduct.map((item) => ({
@@ -416,7 +477,7 @@ const UserPage = () => {
   useEffect(() => {
     async function fetch() {
       const result = await axios.get(
-        `http://localhost:3000/users/search-by-permission/${executiveId}`
+        `${base_url}/users/search-by-permission/${executiveId}`
       );
       const permission = result.data;
       // console.log("permsison", permission);
@@ -443,59 +504,85 @@ const UserPage = () => {
     }));
   };
 
-  const hanldeAmountChange = (fieldType, value) => {
-    value = Math.abs(parseFloat(value)) || 0;
+  const hanldeAmountChange = (fieldType, rawValue) => {
+    let value = rawValue;
+
+    // ✅ convert to number only if not gst/mode/referenceId
+    if (
+      fieldType !== "gst" &&
+      fieldType !== "mode" &&
+      fieldType !== "referenceId"
+    ) {
+      value = Math.abs(Number(rawValue)) || 0;
+    }
+
+    // ✅ gst validation
+    if (fieldType === "gst" && Number(value) > 99) {
+      return; // stop update
+    }
+
+    // ✅ calculate
     const calculation = handleCalculation(fieldType, value);
 
-    console.log(fieldType, "=>", value);
-
+    // ✅ update state
     setClientDetails((prev) => ({
       ...prev,
       amountDetails: {
         ...prev.amountDetails,
         [fieldType]: value,
-        totalAmount: storedtotalAmount,
+        totalAmount: calculation.totalAmount,
         paidAmount: calculation.paidAmount,
         balanceAmount: calculation.balanceAmount,
+        newAmount: calculation.newAmount, // always keep the latest correct newAmount
       },
-
-      amountHistory: [
-        ...prev.amountHistory,
-        {
-          date: new Date().toLocaleDateString("en-GB"),
-          time: new Date().toLocaleTimeString(),
-          updatedBy: userLoginId,
-          finalCost: prev.amountDetails.finalCost,
-          extraCharges: prev.amountDetails.extraCharges,
-          newAmount:
-            fieldType === "newAmount" ? value : prev.amountDetails.newAmount,
-          totalAmount: calculation.totalAmount,
-          paidAmount: calculation.paidAmount,
-          balanceAmount: calculation.balanceAmount,
-        },
-      ],
     }));
-    console.log("clientDetails.amountDetails=>", clientDetails.amountDetails);
   };
 
   const handleCalculation = (fieldType, value) => {
-    const totalAmount = parseFloat(storedtotalAmount) || 0;
-    const paidAmount = parseFloat(storedPaidAmount) || 0;
-    const balanceAmount = parseFloat(storedBalanceAmount) || 0;
+    const finalCost =
+      Number(amountHandle.prevFinal) ||
+      Number(clientDetails.amountDetails.finalCost) ||
+      0;
+    const extraCharges =
+      Number(amountHandle.prevExtra) ||
+      Number(clientDetails.amountDetails.extraCharges) ||
+      0;
+    const prevPaidAmount = Number(amountHandle.prevPaid) || 0;
 
-    let updatedPaidAmount = paidAmount;
-    let updatedBalanceAmount = balanceAmount;
+    let updatedFinalCost = finalCost;
+    let updatedExtraCharges = extraCharges;
+    let newAmount = Number(clientDetails.amountDetails.newAmount) || 0; // keep current newAmount
+    let updatedPaidAmount = prevPaidAmount;
 
+    // ✅ update cost fields
+    if (fieldType === "finalCost") updatedFinalCost = Number(value) || 0;
+    if (fieldType === "extraCharges") updatedExtraCharges = Number(value) || 0;
+
+    // ✅ only update if fieldType = newAmount
     if (fieldType === "newAmount") {
-      const newPayment = parseFloat(value) || 0;
-      updatedPaidAmount = paidAmount + newPayment;
-      updatedBalanceAmount = balanceAmount - newPayment;
+      newAmount = Number(value) || 0;
+      updatedPaidAmount = prevPaidAmount + newAmount;
+    } else {
+      // when editing gst/mode/referenceId, keep same paid + newAmount
+      updatedPaidAmount = prevPaidAmount + newAmount;
+    }
+
+    const totalAmount = updatedFinalCost + updatedExtraCharges;
+    let balanceAmount = totalAmount - updatedPaidAmount;
+
+    // ✅ Rule: if newAmount > totalAmount → reset newAmount, keep paid = prevPaid
+    if (updatedPaidAmount > totalAmount) {
+      alert("Paid Amount cannot exceed TotalCost");
+      newAmount = 0;
+      updatedPaidAmount = prevPaidAmount; // rollback to previous paid only
+      balanceAmount = totalAmount - updatedPaidAmount;
     }
 
     return {
       totalAmount,
       paidAmount: updatedPaidAmount,
-      balanceAmount: updatedBalanceAmount,
+      balanceAmount,
+      newAmount,
     };
   };
 
@@ -570,18 +657,21 @@ const UserPage = () => {
   };
 
   const handleTimeChange = (time) => {
-    if (time === "HH:MM:SS AM/PM") {
-      time = "NA";
+    if (!time || time === "HH:MM:SS AM/PM") {
+      setGetSelectedTime("NA");
+    } else {
+      setGetSelectedTime(time);
     }
-    setGetSelectedTime(time);
   };
+
   const handleNewTimeChange = (time) => {
-    if (time === "HH:MM:SS AM/PM") {
-      time = "NA";
+    if (!time || time === "HH:MM:SS AM/PM") {
+      setGetSelectedNewTime("NA"); // ✅ use null, not "NA"
+    } else {
+      setGetSelectedNewTime(time);
     }
-    setGetSelectedNewTime(time);
-    // console.log("Selected Time:", time);
   };
+
   const handlePrevButton = () => {
     if (userIndex > 0) {
       setUserIndex((prev) => prev - 1);
@@ -592,16 +682,55 @@ const UserPage = () => {
       setUserIndex((prev) => prev + 1);
     }
   };
+
+  const handlePaymentDetails = async () => {
+    const prod = selectedUserProduct.map((prod) => prod.label);
+    try {
+      const result = await axios.post(
+        `${base_url}/payment/history`,
+        {
+          amountDetails: clientDetails.amountDetails,
+          userId: userLoginId,
+          clientId: clientDetails.clientId,
+          clientName: clientDetails.clientName,
+          quotationShare: clientDetails.quotationShare,
+          product: prod[0],
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("payment done", result);
+      alert("Payment done");
+    } catch (err) {
+      console.log("internal error", err);
+    }
+  };
+
   const handleUpdateUserDetails = async () => {
-    console.log("selectedUserProduct", selectedUserProduct);
+    console.log(
+      "selectedUserProduct",
+      clientDetails.amountDetails,
+      clientDetails.amountHistory
+    );
     try {
       clientDetails.tracker.no_of_new_calls_db = {
         completed: true,
         completedDate: new Date().toLocaleDateString("en-GB"),
       };
 
+      if (
+        clientDetails.tracker.recovery_db.completed === true &&
+        clientDetails.amountDetails.finalCost > 0 &&
+        clientDetails.amountDetails.newAmount > 0
+      ) {
+        await handlePaymentDetails();
+      }
+
       const result = await axios.put(
-        `http://localhost:3000/subscribe-user/update-subscribe-user/${currentClientId}`,
+        `${base_url}/subscribe-user/update-subscribe-user/${currentClientId}`,
         {
           clientSerialNo: clientDetails.sr_no,
           clientId: clientDetails.userSubscriptionId,
@@ -639,13 +768,14 @@ const UserPage = () => {
           label: clientDetails.label,
           completion: clientDetails.completion,
           action: "update User",
+          database: "user_db",
         }
       );
 
       console.log("User Updated Successfully", result);
 
       const resultHistory = await axios.post(
-        "http://localhost:3000/history/create-history",
+        `${base_url}/history/create-history`,
         {
           clientSerialNo: clientDetails.sr_no,
           clientId: clientDetails.clientId,
@@ -676,7 +806,7 @@ const UserPage = () => {
           callType: clientDetails.callType,
           followUpDate: clientDetails.followUpDate,
           verifiedBy: clientDetails.verifiedBy,
-          database: "client_db",
+          database: "user_db",
           tracker: clientDetails.tracker,
           amountDetails: clientDetails.amountDetails,
           amountHistory: clientDetails.amountHistory,
@@ -703,6 +833,7 @@ const UserPage = () => {
     setSelectedUserProduct([]);
     setSelectedStageOptions([]);
     handleTimeChange("HH:MM:SS AM/PM");
+    handleNewTimeChange("HH:MM:SS AM/PM");
     setCheckRecovery(false);
     setClientDetails((prev) => ({
       ...prev,
@@ -741,6 +872,7 @@ const UserPage = () => {
         newExpectedDate: "",
         newTime: "",
         newRemark: "",
+        newStage: "",
       },
       amountDetails: {
         totalAmount: "",
@@ -766,6 +898,15 @@ const UserPage = () => {
     }));
   };
 
+  const handlePaymentReceipt = async (id) => {
+    try {
+      const result = await axios.get(`${base_url}/payment/receipt/${id}`);
+      console.log(result.data.result);
+      setPaymentReceiptList(result.data.result);
+    } catch (err) {
+      console.log("internal err", err);
+    }
+  };
   return (
     <div className={styles.main}>
       <div className={styles.content}>
@@ -1458,10 +1599,82 @@ const UserPage = () => {
                 className={styles.recovery}
                 style={{ width: "90%", padding: "10px" }}
               >
+                <span
+                  className={styles.history}
+                  onClick={() => {
+                    handlePaymentReceipt(clientDetails.clientId);
+                    setHistoryOpent(true);
+                  }}
+                >
+                  <IoReceipt className={styles.icon} />
+                </span>
+                {historyOpen && (
+                  <div className={styles.popup}>
+                    <div className={styles.popups} ref={contentRef}>
+                      <table>
+                        <tr>
+                          <th>Sr No</th>
+                          <th>Date And Time</th>
+                          <th>Client Id</th>
+                          <th>Client Name</th>
+                          <th>Final Price</th>
+                          <th>Extra Charges</th>
+                          <th>Total Amount</th>
+                          <th>New Amount</th>
+                          <th>Paid Amount</th>
+                          <th>Balance Amount</th>
+                          <th>Gst %</th>
+                          <th>Reference Id</th>
+                          <th>Mode Of Payment</th>
+                          <th>User Id</th>
+                        </tr>
+                        {paymentReceiptList.map((item, idx) => (
+                          <tr>
+                            <td>{idx + 1}</td>
+                            <td>
+                              {item.updatedAt.split("T")[0]}{" "}
+                              {item.updatedAt.split("T")[1].split(".")[0]}
+                            </td>
+                            <td>{item.client_id}</td>
+                            <td>{item.client_name_db}</td>
+                            <td>{item.finalCost_db}</td>
+                            <td>{item.extraCharges_db}</td>
+                            <td>{item.totalAmount_db}</td>
+                            <td>{item.newAmount_db}</td>
+                            <td>{item.paidAmount_db}</td>
+                            <td>{item.balanceAmount_db}</td>
+                            <td>{item.gst_db}</td>
+                            <td>{item.referenceId_db}</td>
+                            <td>{item.mode_db}</td>
+                            <td>{item.userId_db}</td>
+                          </tr>
+                        ))}
+                      </table>
+                      <div
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          justifyContent: "end",
+                          gap: "20px",
+                        }}
+                      >
+                        <button onClick={reactToPrintFn}>Print</button>
+                        <button
+                          onClick={() => {
+                            setHistoryOpent(false);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <span style={{ display: "flex" }}>
                   <CustomInput
                     type="number"
                     label={"Final Cost"}
+                    readonly={amountHandle.prevFinal > 0}
                     value={clientDetails.amountDetails.finalCost}
                     onChange={(e) => {
                       hanldeAmountChange("finalCost", e.target.value);
@@ -1470,6 +1683,7 @@ const UserPage = () => {
                   <CustomInput
                     type="number"
                     label={"Extra Charges"}
+                    readonly={amountHandle.prevExtra > 0}
                     value={clientDetails.amountDetails.extraCharges}
                     onChange={(e) => {
                       hanldeAmountChange("extraCharges", e.target.value);
@@ -1489,7 +1703,13 @@ const UserPage = () => {
                   <CustomInput
                     type="number"
                     label={"New Amount"}
-                    value={clientDetails.amountDetails.newAmount}
+                    readonly={amountHandle.prevBalance === 0}
+                    value={
+                      amountHandle.prevTotal > 0 &&
+                      amountHandle.prevTotal === amountHandle.prevPaid
+                        ? 0
+                        : clientDetails.amountDetails.newAmount
+                    }
                     onChange={(e) => {
                       hanldeAmountChange("newAmount", e.target.value);
                     }}
@@ -1510,6 +1730,52 @@ const UserPage = () => {
                     value={clientDetails.amountDetails.balanceAmount}
                     onChange={(e) => {
                       hanldeAmountChange("balanceAmount", e.target.value);
+                    }}
+                  />
+                </span>
+                <span style={{ display: "flex" }}>
+                  <CustomInput
+                    type="text"
+                    label={"GST %"}
+                    value={clientDetails.amountDetails.gst}
+                    onChange={(e) => {
+                      hanldeAmountChange("gst", e.target.value);
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "2px",
+                    }}
+                  >
+                    <label htmlFor="" style={{ fontSize: "16px" }}>
+                      Mode
+                    </label>
+                    <select
+                      name=""
+                      id=""
+                      value={clientDetails.amountDetails.mode}
+                      onChange={(e) => {
+                        hanldeAmountChange("mode", e.target.value);
+                      }}
+                      style={{ width: "60%", padding: "1px 10px" }}
+                    >
+                      {onlinePaymentMode.map((item, idx) => (
+                        <option key={idx} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <CustomInput
+                    type="text"
+                    label={"Reference Id"}
+                    value={clientDetails.amountDetails.referenceId}
+                    onChange={(e) => {
+                      hanldeAmountChange("referenceId", e.target.value);
                     }}
                   />
                 </span>
@@ -1585,10 +1851,11 @@ const UserPage = () => {
                     }}
                   >
                     <option value="">--Select--</option>
-                    <option value="Demo">Demo</option>
-                    <option value="FollowUp">FollowUp</option>
-                    <option value="Installation">Installation</option>
-                    <option value="Hot">Hot</option>
+                    {(selectNewStage || []).map((item, idx) => (
+                      <option key={idx} value={item}>
+                        {item}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
